@@ -122,3 +122,23 @@ If you wish to give summary statistics to the participant:
   overwriting any inner HTML it has (above: `<b>Nothing</b> to see here!`).
   This can be useful to prevent reusing HTML code which makes the HTML code easier to read.
 
+### `<meta>` tags
+In order to store, and manage meta data, so-called `<meta>` tags are used. These store, for instance, the participant code, 
+experimental condition **(currently not fully implemented)**, session, agenda etc. The name attributes of tags which are used by PSlides always begin with `pslides:`.
+- `name="pslides:subj"`: A meta tag with this `name` contains the participant's code in the `content` attribute. This will be tracked throughout the experiment and sessions.
+- `name="pslides:session"`: A meta tag with this `name` contains the session code. Imagine running a longitudinal study where a participant completes multiple sessions.
+  The session code will differ but the subject code will stay the same. The participant needs to see their code and save it somewhere, of course.
+- `name="pslides:agenda"`: The contents space-separated URIs which will navigate the client throughout the experiment.
+  Include this at the beginning of each experiment (e.g., the information sheet). Every time the user presses the `<p-redirect>` tag, the user will be directed to the next URL.
+  This way, you can program multiple tasks and reuse them later on without copying and pasting code. You could also reference someone else's task and would not have to reprogram it yourself.
+  Simply include the URL to the task. The agenda will be added to the redirected URL as a __URI parameter__ so that the client can leap from one questionnaire or task to the other.
+  If the other document allows uploads, you will have access to the resulting data.
+  Make sure to redirect participants to a debriefing or concluding page at the end of the agenda to not confuse the client.
+- `name="pslides:cond"`: Choose an experimental condition at the beginning of the experiment. Provide __non-obvious__ options to pick from in the `options` attribute.
+  The different options must be separated by space. Here is an example:
+  ```html
+  <meta name="pslides:cond" options="neutral-left neutral-right" 
+  ```
+  The `content` attribute will be automatically filled by choosing one of the conditions.
+  If a person redirects to a new task or questionnaire, a __URI parameter__ `cond` will be created.
+
