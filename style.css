@@ -1,0 +1,345 @@
+
+body {
+	font-family: Arial;
+	margin: 0;
+	padding: 0;
+}
+
+p-template {
+	display: none;
+}
+kbd {
+	background-color: black;
+	font-size: 100%;
+	color: #EEEEEE;
+	font-family: Arial, Consolas;
+	border: 2px solid black;
+	border-radius: 20%;
+	padding: 0.05em 0.2em;
+	box-shadow: 1px 2px 4px #777777;
+	margin-left: 0.1em;
+	margin-right: 0.1em;
+}
+
+p-gencode, p-subjcode {
+	display: block;
+	padding: 0.3em;
+	width: auto;
+}
+p-gencode>span, p-subjcode>span {
+	font-weight: bold;
+	font-family: "Anonymous Pro", "Courier New", Consolas;
+	font-size: 1.5em;
+	padding-left: 0.3em; 
+	padding-right: 0.3em; 
+	background-color: #EEEEEE;
+	word-break: break-word;
+	border-radius: 0.2em;
+}
+p-gencode>button, p-subjcode>button {
+	border: 3px solid black;
+	border-radius: 400%;
+	margin: 0.3em;
+	padding: 0.25em;
+	user-select:none;
+	background-color: white;
+	height: 2.2em;
+	width: 2.2em;
+	cursor: pointer;
+}
+
+p-gencode>button svg, p-subjcode>button svg {
+	width: 1.3em;
+	height: 1.3em;
+}
+
+p {
+	text-align: center;
+	font-size: inherit;
+}
+p, ol, ul {
+	font-size: inherit;
+	line-height: 1.5;
+}
+ol, ul {
+	text-align: left;
+}
+
+p-next, p-back, p-exit, p-redirect, p-download, p-upload {
+	display: inline-block;
+	text-align: inherit;
+	font-size: inherit;
+	padding: 0.2em 0.5em;
+	margin: 0.5em;
+	border-radius: 1.5em;
+	font-weight: bold;
+	border: 4px solid black;
+	background-color: #EEEEEE;
+	user-select:none;
+	cursor: pointer;
+	transition: filter 0.4s ease;
+}
+
+p-next>*, p-back>*, p-exit>*, p-redirect>*, p-download>*, p-upload>* {
+	vertical-align:middle;
+	display:inline-block;
+}
+p-exit a, p-redirect {
+	font-size: 1.em;
+	padding: 0.2em 0.5em;
+	margin: 0em;
+}
+p-exit a, p-redirect a {
+	font-size: inherit;
+	font-weight: inherit;
+	text-decoration: inherit;
+	cursor: pointer;
+	user-select:none;
+	color: inherit;
+	background-color: inherit;
+	line-height: 1;
+}
+
+p-next:hover, p-back:hover,
+p-download:hover, p-upload:hover,
+p-gencode>button:active, p-subjcode>button:active {
+	background-color: #CCCCCC;
+}
+p-next:active, p-back:active, p-download:active, p-upload:active,
+p-gencode>button:active, p-subjcode>button:active {
+	background-color: #777777;
+	color: white;
+}
+p-exit, p-redirect {
+	background-color: #C0D5FF;
+}
+p-exit:hover, p-redirect:hover {
+	background-color: #689AFF;
+}
+p-exit:active, p-redirect:active {
+	background-color: #0054FF;
+	color: white;
+}
+p-next:active svg path, p-back:active svg path,
+p-upload:active svg path, p-download:active svg path,
+p-gencode>button:active svg path, p-subjcode>button:active svg path,
+p-exit:active svg path, p-redirect:active svg path {
+	fill: white;
+	z-index: 2;
+}
+
+p-message {
+	display: block;
+	margin: 0.5em;
+	text-align: center;
+}
+
+
+p-slide {
+	display: none;
+	text-align: center;
+	font-size: inherit;
+}
+p-center, p-fixcross {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: auto;
+    height: auto;
+    /*background-color: #b9faac;*/
+    position: fixed;
+	text-align: center;
+}
+p-fixcross:before {
+	font-size: 3cm;
+	content: "+";
+	font-family: Consolas, "Courier New", Arial;
+}
+p-formframe {
+	display:block;
+	font-size:inherit;
+	padding-left:20%;
+	padding-right:20%;
+	text-align:left;
+}
+p-formframe p {
+	text-align: inherit;
+}
+p-nobr, nobr {
+	white-space: nowrap;
+	overflow-x: hidden;
+}
+
+@media (max-width:650px) { /*handheld */
+	p-center, p-fixcross {
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: auto;
+		height: auto;
+		position: fixed;
+	}
+	p-formframe {
+		display:block;
+		font-size: 90%;
+		padding-left: 5%;
+		padding-right: 5%;
+		text-align: left;
+	}
+}
+p-response, p-records, p-var, p-data {
+	display: none;
+	white-space: pre;
+}
+[p_hiddenclass="hidden"] {
+	display: none;
+}
+p-if[p_hiddenclass="never"], p-elif[p_hiddenclass="never"], p-else[p_hiddenclass="never"] {
+	display: none;
+}
+p-slide[p_hiddenclass="current"] {
+	display: block;
+}
+p-slide[p_hiddenclass="hidden"] {
+	display: block;
+	visibility: hidden;
+}
+p-slide[p_hiddenclass="loading"] {
+	display: block;
+	visibility: hidden;
+}
+
+p-slide p-if[ignore="true"],
+p-slide p-elif[ignore="true"],
+p-slide p-else[ignore="true"],
+p-slide p-while[ignore="true"] {
+	display: none;
+}
+
+fieldset, legend {
+	text-align: center;
+}
+p-timer {
+	display: block;
+}
+
+button, select, option, textarea, input {
+	font-size: inherit;
+}
+
+p-mirror {
+	display: Inline-block;
+	transform: scale(-1, 1);
+	-moz-transform: scale(-1, 1);
+	-webkit-transform: scale(-1, 1);
+	-o-transform: scale(-1, 1);
+	-ms-transform: scale(-1, 1);
+	transform: scale(-1, 1);
+}
+
+p-input {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 2em;
+}
+
+p-input>* {
+	display: flex;
+	flex-direction: row;
+	margin: 0.1em;
+	border-radius: 0.5em;
+	align-items: center;
+}
+p-input label {
+	background-color: white;
+	padding: 0.2em;
+	transition: filter 0.4s ease;
+	min-height: 1.5em;
+}
+p-input label>* {
+	display: flex;
+	flex-direction: column;
+	font-size: inherit;
+	color: inherit;
+}
+p-input label:hover {
+	filter: brightness(97%);
+}
+
+p-input label input[type=radio],
+p-input label input[type=checkbox] {
+	margin-left: 0.5em;
+	margin-right: 1em;
+	font-size: inherit;
+}
+
+
+label:has(input[type=radio]:checked),
+label:has(input[type=checkbox]:checked) {
+	filter: brightness(92%);
+}
+
+p-input label>input[type=checkbox] {
+	accent-color: blue;
+}
+
+p-input input[type=text] {
+	border: 3px solid black;
+	border-radius: 0.5em;
+	padding: 0.5em;
+	margin: 0em 1em;
+	background-color: white;
+}
+p-input[type=subj] input[type=text] {
+	width: 16em;
+	font-size: 1.5em;
+	font-weight: bold;
+	padding: 0.2em 0.5em;
+	font-family: monospace;
+}
+
+
+
+/*
+p-input>input[type=text]:focus,
+p-input>input[type=text]:hover {
+	background-color: #EEEEEE;
+	filter: brightness(95%);
+}
+*/
+
+/* Likert scales */
+p-input[type=likert] {
+	flex-direction: row;
+}
+p-input[type=likert]>label {
+	display: flex;
+	flex-direction: column;
+	flex-basis: 0;
+	min-width: 1;
+	flex-grow: 1;
+}
+p-input[type=likert]>label>* {
+	display: flex;
+	display: inline-block;
+	text-align: center;
+}
+p-input[type=likert]>label>input[type=radio] {
+	margin: 0.75em 0.1em;
+	font-size: inherit;
+}
+p-input input[type=radio] {
+	accent-color: black;
+}
+
+/*Presentations*/
+p-frame {
+	left: 50%;
+	padding-top: 10em;
+	padding-left: 20%;
+	padding-right: 20%;
+	justify-content: center;
+}
+
+
+
