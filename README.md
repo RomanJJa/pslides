@@ -137,8 +137,11 @@ experimental condition **(currently not fully implemented)**, session, agenda et
 - `name="pslides:cond"`: Choose an experimental condition at the beginning of the experiment. Provide __non-obvious__ options to pick from in the `options` attribute.
   The different options must be separated by space. Here is an example:
   ```html
-  <meta name="pslides:cond" options="neutral-left neutral-right" 
+  <meta name="pslides:cond" options="neutral-left neutral-right">
   ```
   The `content` attribute will be automatically filled by choosing one of the conditions.
+  ```html
+  <meta name="pslides:cond" options="neutral-left neutral-right" content="neutral-right">
+  ```
   If a person redirects to a new task or questionnaire, a __URI parameter__ `cond` will be created.
 
