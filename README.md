@@ -42,7 +42,10 @@ The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. Wh
   original time frame but that depends on the machine, temporal screen resolution, and browser.
 - `current`: This tag is automatically created by the library. Do not write this in your own HTML code.
   This tag makes it possible for JavaScript to query the slide (DOM element) which the client is currently looking at:
-  `document.querySelector(p-slide[current])`. Nevertheless, it is usually quicker accessing the current slide's DOM element via the `pslides` object: `pslides.currentSlide`.
+  ```javascript
+  document.querySelector("p-slide[current]")
+  ```
+  Nevertheless, it is usually quicker accessing the current slide's DOM element via the `pslides` object: `pslides.currentSlide`.
 #### For JavaScript programming: 
 If you wish to quickly access the DOM element of the current slide in JavaScript, consider `pslides.currentSlide` or `document.querySelector(p-slide[current])`.
 
