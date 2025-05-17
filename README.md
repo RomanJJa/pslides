@@ -62,7 +62,7 @@ This tag allows you to present, for instance, a stimulus at the center of the sc
   </p-slide>
 ```
 
-### `p-upload`
+### `<p-upload>`
 This might be the most important tag of them all. After all, you wish to store your data somewhere.
 
 ```html
