@@ -5,7 +5,7 @@ A JavaScript library for programming powerful psychological experiments and surv
 In order to use this library, clone the project, move the files into your preferred directory on the server, and include the following two elements in your document head:
 ```html
 <script src="main.js">
-<link type="text/css" rel="stylesheet" href="style.css">
+<link type="text/css" rel="stylesheet" href="style.css"/>
 ```
 
 ## Goals
