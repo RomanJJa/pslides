@@ -66,7 +66,7 @@ This tag allows you to present, for instance, a stimulus at the center of the sc
 This might be the most important tag of them all. After all, you wish to store your data somewhere.
 
 ```html
-  <p-upload id="data_upload0">Upload data</p-upload>
+  <p-upload>Upload data</p-upload>
 ```
 **Attributes**
 - `format`: Indicate which format the data should be uploaded and stored in (`json` or `csv`). The default is `json`.
@@ -87,7 +87,7 @@ it will message the state of the upload. An error will be written in red font, a
 If you are running the experiment offline, debug output files or if you would like to allow clients to download their own data, you can use the `<p-download>` tag.
 
 ```html
-  <p-download id="data_upload0">Upload data</p-upload>
+  <p-download>Upload data</p-upload>
 ```
 **Attributes**
 - `format`: Indicate which format the data should be downloaded as (`json` or `csv`). The default is `json`.
