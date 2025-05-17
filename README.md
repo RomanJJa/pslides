@@ -45,3 +45,20 @@ The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. Wh
 #### For JavaScript programming: 
 If you wish to quickly access the DOM element of the current slide in JavaScript, consider `pslides.currentSlide` or `document.querySelector(p-slide[current])`.
 
+
+### `<p-next>` and `<p-back>`
+`<p-next>` and `<p-back>` act as navigation buttons to move to the next or previous slide.
+**Attributes**
+- `to`: this allows you insert a number where to navigate to. The default value for `<p-next>` is `1` and for `<p-back>` is `-1`.
+  However, you can also insert an ID of a slide which will be interpreted as a string.
+  This way, pressing the button will navigate you to the slide which has this ID.
+
+### `<p-center>`
+This tag allows you to present, for instance, a stimulus at the center of the screen. For instance, you might wish to present a fixation cross in the center of the screen for 300 milliseconds:
+```html
+  <p-slide maxms="300">
+     <p-center>+</p-center>
+  </p-slide>
+```
+
+
