@@ -61,4 +61,63 @@ This tag allows you to present, for instance, a stimulus at the center of the sc
   </p-slide>
 ```
 
+### `p-upload`
+This might be the most important tag of them all. After all, you wish to store your data somewhere.
+
+```html
+  <p-upload id="data_upload0">Upload data</p-upload>
+```
+**Attributes**
+- `format`: Indicate which format the data should be uploaded and stored in (`json` or `csv`). The default is `json`.
+- `js`: If you wish to upload your own data object, indicate it here by writing the name of the variable or constant as a string.
+  Remember that when uploading a CSV file of your own object, you need to parse the object as a CSV file. To do so, create an object array and then parse it with `pslides.stringifyCSV(myArrayOfObjects)`.
+Simply pressing the upload button does not indicate to the client if the upload was successful or is still in progress.
+The client will not check the browser console to see if the upload was successful.
+This is why you can include a `<p-message>` on the slide (maybe right below the upload button) which indicates the state of the upload to the client.
+Simply give the `<p-upload>` button a unique `id` (unique to this element in the entire document). 
+```html
+  <p-upload id="data_upload0" format="csv">Upload data</p-upload>
+  <p-message for="data_upload0">No upload yet</p-message>
+```
+When the client clicks on the `<p-upload>` element,
+it will message the state of the upload. An error will be written in red font, a successful upload in blue font, and any progress in-between in orange font.
+
+### `p-download`
+If you are running the experiment offline, debug output files or if you would like to allow clients to download their own data, you can use the `<p-download>` tag.
+
+```html
+  <p-download id="data_upload0">Upload data</p-upload>
+```
+**Attributes**
+- `format`: Indicate which format the data should be downloaded as (`json` or `csv`). The default is `json`.
+- `js`: If you wish to download a separate object, indicate it here by writing the name of the variable or constant as a string. This string will be evaluated upon button press.
+  Remember that when downloading a CSV file of your own object, you need to parse the object as a CSV file. To do so, create an object array and then parse it with `pslides.stringifyCSV(myArrayOfObjects)`.
+You can include feedback (error or success) with a `<p-message>` tag which indicates the state of the download to the client.
+Simply give the `<p-download>` button a unique `id` (unique to this element in the entire document). 
+```html
+  <p-download id="data_download0" format="csv">Download data</p-download>
+  <p-message for="data_download0">Not downloaded yet</p-message>
+```
+When the client clicks on the `<p-download>` element,
+it will message the state of the download. An error will be written in red font, a successful upload in blue font, and any progress in-between in orange font.
+If you wish to give summary statistics to the participant:
+```html
+  <p-download id="stats_download1" js="userSummary">Download my test performance</p-download>
+  <p-message for="stats_download1">Not downloaded yet</p-message>
+```
+
+### General attributes
+- `jsfill`: This will fill the HTML element with the value of any JavaScript expression provided.
+  ```html
+  <script>
+    let myObject = [1, 2, 3];
+  <script>
+  <p jsfill="myObject.join(', ')">
+     <b>Nothing</b> to see here!
+  </p>
+  ```
+  The upper example would delete anything between the paragraph's opening tag `<p>` and closing tag `</p>` and instead insert "1, 2, 3".
+- `idfill`: Upon loading the document, the contents of the element with the referred to `id` will be inserted into this element,
+  overwriting any inner HTML it has (above: `<b>Nothing</b> to see here!`).
+  This can be useful to prevent reusing HTML code which makes the HTML code easier to read.
 
