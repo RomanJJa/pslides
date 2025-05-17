@@ -112,7 +112,7 @@ If you wish to give summary statistics to the participant:
   ```html
   <script>
     let myObject = [1, 2, 3];
-  <script>
+  </script>
   <p jsfill="myObject.join(', ')">
      <b>Nothing</b> to see here!
   </p>
