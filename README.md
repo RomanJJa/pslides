@@ -23,7 +23,8 @@ If you would like to include any custom code for your specific purposes, you can
 ## Usage: Programming an experiment or a survey with PSlides
 The library includes custom HTML tags that begin with "p-" like `<p-slide>` which are specific to the PSlides library. There exists pre-configured CSS for these tags.
 ### `<p-slide>`
-The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. When the URL to the experiment is opened, the library picks the first slide in the document by making only the contents of that slide visible to the client. There are some extra attributes that make it easier for you to navigate the slides:
+The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. When the URL to the experiment is opened, the library picks the first slide in the document by making only the contents of that slide visible to the client. There are some extra attributes that make it easier for you to navigate the slides.
+**Attributes**
 - `keysnext` & `keysback`: You can write down any keys (such as "KeyS", "KeyK", "Space", "Enter", ...) on the keyboard
   that will navigate the client to the next (`keysnext`) or previous (`keysback`) slide. If you want to write multiple keys, separate them by spaces.
   ```html
@@ -82,7 +83,7 @@ Simply give the `<p-upload>` button a unique `id` (unique to this element in the
 When the client clicks on the `<p-upload>` element,
 it will message the state of the upload. An error will be written in red font, a successful upload in blue font, and any progress in-between in orange font.
 
-### `p-download`
+### `<p-download>`
 If you are running the experiment offline, debug output files or if you would like to allow clients to download their own data, you can use the `<p-download>` tag.
 
 ```html
