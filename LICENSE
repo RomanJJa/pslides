@@ -12,6 +12,13 @@ furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
+If you use this library in a publication, whether it be a scientific 
+publication, preprint, blogpost, or presentation, we kindly request that you 
+cite this library as follows (APA style):
+
+Janssen, R. J. (2025). PSlides (Version 0.2.0) [Computer software]. 
+GitHub. https://github.com/RomanJJa/pslides
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
