@@ -8,6 +8,12 @@ In order to use this library, clone the project, move the files into your prefer
 <link type="text/css" rel="stylesheet" href="style.css"/>
 ```
 
+If you have stable internet connection, you can also include the current version (here: version 0.2) by including the URL to romans.cc:
+```html
+<script src="https://www.romans.cc/lib/pslides/v0.2/main.js">
+<link type="text/css" rel="stylesheet" href="https://www.romans.cc/lib/pslides/v0.2/style.css"/>
+```
+
 ## Goals
 The goals of this library are:
 - allowing a general-purpose application in which you can easily integrate your own features
@@ -124,7 +130,40 @@ If you wish to give summary statistics to the participant:
 - `idfill`: Upon loading the document, the contents of the element with the referred to `id` will be inserted into this element,
   overwriting any inner HTML it has (above: `<b>Nothing</b> to see here!`).
   This can be useful to prevent reusing HTML code which makes the HTML code easier to read.
-
+- `order`: order at which the child elements are displayed. By default, child elements are displayed sequentially (in the order in which they are written in HTML).
+  However, it is also possible to shuffle the child elements by setting `order="shuffle"`.
+  ```html
+  <p-slide>
+     <p-formframe>
+       <ul order="pseudoshuffle(2)">
+          <li>Apples</li>
+          <li>Oranges</li>
+          <li>Pineapples</li>
+       </ul>
+     </p-formframe>
+  </p-slide>
+  ```
+  If you would like to pseudoshuffle the elements
+  (shuffle without more than __m__ repititions), set `order=pseudoshuffle(m)`. For instance, if you do not wish the `group` of elements to repeat more than 3 times,
+  you can set `order=pseudoshuffle(m)`. The groups (categories of elements) can be set with the `group` attribute in child elements.
+  ```html
+  <p-slide>
+     <p-formframe>
+       <ul order="pseudoshuffle(2)">
+          <li>Apples</li>
+          <li group="citrus">Oranges</li>
+          <li>Pears</li>
+          <li group="citrus">Grapefruit</li>
+          <li group="citrus">Lemons</li>
+          <li>Pineapples</li>
+          <li>Plums</li>
+          <li>Pineapples</li>
+       </ul>
+     </p-formframe>
+  </p-slide>
+  ```
+  Finally, if you do not wish for an item to be shuffled at all, you can set `group="fixed"`. This will fix the element child at the current position.
+  This can give you some control to manipulate the position of some items of interest.
 ### `<meta>` tags
 In order to store, and manage meta data, so-called `<meta>` tags are used. These store, for instance, the participant code, 
 experimental condition **(currently not fully implemented)**, session, agenda etc. The name attributes of tags which are used by PSlides always begin with `pslides:`.
