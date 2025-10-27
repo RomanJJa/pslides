@@ -61,12 +61,13 @@
 // if file cannot be reached, do it randomly
 
 // first, start the pslides object.
-const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null,
+const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null, autoplayed:[],
                  slideStartTime: new Date(), slideEndTime: new Date(),
 				 settings: {pointerTemporalResolution: 20},
 				 key: {down:{t:[],k:[]},up:{t:[],k:[]}}, visibility : {t:[],state:[]},
 				 pointer: {t:[],x:[],y:[],f:[],rx:[],ry:[],ang:[],el0:[],el1:[],type:[]}, activePointers: new Map(),
                  nextSlideKeys: [], backSlideKeys: [], slideNumber: 0, isClickedDown: false,
+				 serverSubjPath: "access/subj/", serverRootPath: "/u", 
 				 eventListeners: {onmousedown:null,onmouseup:null,onmousemove:null,
 				                  onkeydown:null,onkeyup:null,
 								  onpointermove:null,onpointerdown:null,onpointerup:null,onpointercancel:null,
@@ -138,6 +139,32 @@ function stringify(x) {
 		res = JSON.stringify(x)
 	}
 	return res;
+}
+
+function displayMessage(message, id=null, type=null) {
+	type = ifNullStr(type).toLowerCase();
+	var query = "p-message[for=\""+escapeString(id)+"\"]";
+	if ([undefined,null,""].includes(id) || document.querySelector(query) === null) {
+		if (type==="error") {
+			console.error(message);
+		} else if (type.indexOf("warn")>-1) {
+			console.warn(message);
+		} else {
+			console.log(message);
+		}
+	} else {
+		var d = document.querySelectorAll(query);
+		for (var i=0; i<d.length; i++) {
+			if (type==="error") {
+				d[i].style.color = "#EF0000";
+			} else if (type.indexOf("warn")>-1) {
+				d[i].style.color = "#FF7700";
+			} else {
+				d[i].style.color = "#0000EF";
+			}
+			d[i].innerHTML = message.replaceAll("\n","<br/>");
+		}
+	}
 }
 
 pslides.loadFile = function(filename, attributes={}) {
@@ -263,13 +290,21 @@ function isDOMElement(obj) {
 }
 
 // evaluate a string:
-function tryEval(str, ifError=null, at="") {
+function tryEval(str, at="", ifError=null) {
+	var res = null;
+	if (typeof at === "string" && at !== "") at = document.getElementById(at);
 	try {
-		return eval(str);
+		res = eval(str);
+		if (isDOMElement(at) && at.id !== "") {
+			displayMessage("Successfully evaluated JavaScript fragment at id=\""+
+			               escapeString(at.id)+"\".", id=at.id)
+		}
+		return res;
 	} catch(e) {
-		
 		if (isDOMElement(at)) {
-			at = " at " + stringifyNodeTag(at)
+			// at = " at " + stringifyNodeTag(at)
+			displayMessage("Error when evaluating the element where <p-nobr>id=\""+
+						   at.id+"\":</p-nobr>\n"+e, id=at.id, type="error")
 		} else if (typeof at === "string" && at.trim().length>0) {
 			at = " "+at.trim();
 		}
@@ -277,13 +312,20 @@ function tryEval(str, ifError=null, at="") {
 		if (typeof ifError === "function") {
 			return ifError();
 		} else if (typeof ifError === "string") {
-			console.error("Error when evaluating \""+str+"\""+at+".\n", ifError, "\n", e);
+			console.error("Error when evaluating \""+str+"\""+String(at)+".\n", ifError, "\n", e);
 		} else if (![undefined,null,""].includes(ifError)) {
-			console.error("Error when evaluating \""+str+"\""+at+".\n", stringify(ifError), "\n", e);
+			console.error("Error when evaluating \""+str+"\""+String(at)+".\n", stringify(ifError), "\n", e);
 		} else {
-			console.error("Error when evaluating \""+str+"\""+at+".\n", e);
+			console.error("Error when evaluating \""+str+"\""+String(at)+".\n", e);
 		}
 	}
+}
+
+function evalScript(node) {
+	
+	displayMessage("Could not evaluate \"jsfill\" in element with <p-nobr>id=\""+
+						   node.id+"\":</p-nobr>\n"+e, id=node.id, type="error")
+
 }
 
 function parse(str) {
@@ -809,8 +851,8 @@ async function handlePData() {
 		}
 		
 		// number of items
-		var n = tryEval(d[i].getAttribute("n"),
-			            ifError="when evaluating the Attribute \"n\"", at=d[i]);
+		var n = tryEval(d[i].getAttribute("n"), at=d[i],
+			            ifError="when evaluating the Attribute \"n\"");
 		if (typeof n !== "number") n = -1;
 		if (n >= 0) pslides.data[key] = pslides.data[key].slice(0, Math.floor(n));
 		
@@ -976,7 +1018,7 @@ function copyInnerHTML(node) {
 
 
 function setMetaElement(name, content=null) {
-	var meta = document.head.querySelector("meta[name=\"pslides:"+escapeString(name)+"\"]"),
+	let meta = document.head.querySelector("meta[name=\"pslides:"+escapeString(name)+"\"]"),
 		URLParams = new URLSearchParams(window.location.search);
 	// URL parameter takes precedence over provided content:
 	if (![null,""].includes(URLParams.get(name))) content = URLParams.get(name);
@@ -985,14 +1027,20 @@ function setMetaElement(name, content=null) {
 		meta.setAttribute("name", "pslides:"+escapeString(name));
 		document.head.appendChild(meta);
 	}
-	if (![null,""].includes(content) && [null,""].includes(meta.getAttribute("content"))) {
+	
+	// If the replacement is not null/empty, 
+	if (![null,""].includes(content) &&
+		([null,""].includes(meta.getAttribute("content")) || 
+		 name.trim().toLowerCase()==="subj")) { // 
 		meta.setAttribute("content", content);
-	}
-	if ([undefined,null,""].includes(outObj.meta[name])) {
+		
+		// set the record data straight:
 		outObj.meta[name] = content;
 	}
+	
 	return meta;
 }
+
 
 function extractMetaContent(name,alt="") {
 	var d = document.head.querySelector("meta[name=\"pslides:"+escapeString(name)+"\"]");
@@ -1005,17 +1053,27 @@ function extractParameter(names=[]) {
 	if (typeof names !== "object" && names.length !== undefined) {
 		names = [stringify(names)];
 	}
-	var res  = {}, params = new URLSearchParams(window.location.search),
-		path = window.location.pathname.replace("/u/","").split("/").filter((x) => x!=="");
+	let res = {}, 
+		params = new URLSearchParams(window.location.search),
+		path = window.location.pathname
+		       .replace(pslides.serverRootPath+"/", "")
+			   .replaceAll("//","/")
+			   .split("/").filter((x) => x!=="");
 	if (["http:","https:"].includes(window.location.protocol)) {
 		if (path.length<4) path.push("index.html");
 		for (var i=0; i<names.length; i++) {
 			if (names[i] === "srcroot") {
-				res[names[i]] = path[0];
+				res["srcroot"] = path[0];
 			} else if (names[i] === "srcprj") {
-				res[names[i]] = path[1];
+				res["srcprj"] = path[1];
 			} else if (names[i] === "srcfn") {
-				res[names[i]] = path[3].replaceAll("_","-");
+				res["srcfn"] = path[3].replaceAll("_","-");
+			} else if (names[i] === "agenda" && 
+			           extractMetaContent(name="agenda") !== "" &&
+					   params.get("agenda") !== null) {
+				// if agenda is represented in the URL and in the meta tags.
+				res["agenda"] = extractMetaContent(name="agenda") +
+				                " " + params.get("agenda")
 			} else {
 				res[names[i]] = params.get(names[i]);
 				if (res[names[i]] === null) {
@@ -1035,10 +1093,15 @@ function extractParameter(names=[]) {
 		}
 	}
 	
+	// subj: Just in case it has been altered:
+	if (res["subj"] === "" && extractMetaContent(name="subj") !== "") {
+		res["subj"] = extractMetaContent(name="subj");
+	}
+	
 	// format:
 	if (res["format"] === "") res["format"] = "json";
 	
-	// agenda:
+	// split up agenda:
 	if (![undefined,null].includes(res["agenda"]) && res["agenda"].trim() !== "") {
 		res["agenda"] = splitWhitespace(res["agenda"]);
 		console.log("res['agenda']", res["agenda"]);
@@ -1088,32 +1151,6 @@ function encodeURIArg(val="",name) {
 	return res;
 }
 
-function displayMessage(message, id=null, type=null) {
-	type = type.toLowerCase();
-	if ([undefined,null,""].includes(id)) {
-		console.warn("Display message: no ID provided in displayMessage().");
-		if (type==="error") {
-			console.error(message);
-		} else if (type.indexOf("warn")>-1) {
-			console.warn(message);
-		} else {
-			console.log(message);
-		}
-	} else {
-		var d = document.querySelectorAll("p-message[for=\""+escapeString(id)+"\"]");
-		for (var i=0; i<d.length; i++) {
-			if (type==="error") {
-				d[i].style.color = "#EF0000";
-			} else if (type.indexOf("warn")>-1) {
-				d[i].style.color = "#FF7700";
-			} else {
-				d[i].style.color = "#0000EF";
-			}
-			d[i].innerHTML = message.replaceAll("\n","<br/>");
-		}
-	}
-}
-
 function messagingHTTPRequest(request, id=null, method="POST") {
 	var type   = "warn",
 		mes    = "No message.",
@@ -1150,15 +1187,16 @@ function messagingHTTPRequest(request, id=null, method="POST") {
 
 function sendOutData(element=null, data=null, format="json") {
 	format = format.trim().toLowerCase();
-	if (data===null && isDOMElement(element) && ![undefined,null,""].includes(element.getAttribute("js"))) {
-		data = tryEval(element.getAttribute("js"), ifError=function(){return outObj;}, at=element);
+	let isDOM = isDOMElement(element);
+	if (data===null && isDOM && ![undefined,null,""].includes(element.getAttribute("js"))) {
+		data = tryEval(element.getAttribute("js"), at=element, ifError=function(){return outObj;});
 	}
 	
 	if ([undefined,null,""].includes(data)) data=outObj;
 	var loc = window.location.protocol,
 		message_id = null;
 		isFirstSlide = document.querySelector("p-slide[current]") === document.querySelectorAll("p-slide")[0];
-	if (isDOMElement(element)) {
+	if (isDOM) {
 		message_id = element.id;
 		if (![null,""].includes(element.getAttribute("format"))) {
 			format = element.getAttribute("format");
@@ -1178,7 +1216,8 @@ function sendOutData(element=null, data=null, format="json") {
 			if (value !== "") urlArray.push(encodeURIArg(value, key));
 		}
 		var xhr = new XMLHttpRequest();
-		var url = window.location.origin+"/access/subj/save_subj_data.php?"+urlArray.filter((x) => ifNullStr(x) !== "").join("&");
+		var url = window.location.origin+"/"+pslides.serverSubjPath+"save_subj_data.php?"+
+		          urlArray.filter((x) => ifNullStr(x) !== "").join("&");
 		// window.location.search = "?"+;
 		console.log("request URL:\n",url);
 		xhr.onreadystatechange = function() {messagingHTTPRequest(xhr, message_id, method="post")};
@@ -1188,7 +1227,8 @@ function sendOutData(element=null, data=null, format="json") {
 		xhr.send(datastr);
 	} else if (loc === "file:") {
 		displayMessage("You cannot send data when you are browsing local files\n"+
-		               "The URL starts with \""+loc+"//…\" and does not follow the HTTP protocol\n(starting with \"http://…\" or \"https://…\").", 
+		               "The URL starts with \""+loc+"//…\" and does not follow the HTTP protocol\n"+
+					   "(starting with \"http://…\" or \"https://…\").", 
 					   id=message_id, type="error")
 	} else if (isFirstSlide) {
 		displayMessage("You cannot send data on the first slide of the page.",
@@ -1241,6 +1281,7 @@ function downloadObj(node=null, x=null, filename=null) {
 // fill attributes with JS (jsattr): insert JSON object with {"attr":value, ...}
 
 function evalJSAttr(node) {
+	if (node.tagName==="P-SUBJCODE") node.querySelector("span").innerHTML = extractParameter("subj").subj
 	var attrs  = node.getAttribute("jsattr");
 	if (attrs !== null && attrs !== "") {
 		attrs = attrs.trim()
@@ -1251,16 +1292,27 @@ function evalJSAttr(node) {
 			for (var key in attr) {
 				if (attr.hasOwnProperty(key)) node.setAttribute(key, stringify(attr[key]));
 			}
+			if (node.id !== "") {
+				displayMessage("\"jsattr\" successfully evaluated in id=\""+
+							   node.id+"\":", id=node.id)
+			}
 		} catch(e) {
-			console.warn("Could not evaluate \"jsattr\" to insert attributes in:\n",node,"\nbecause:\n",e)
+			displayMessage("Could not evaluate \"jsattr\" to insert "+
+			               "attributes in element with id=\""+
+						   node.id+"\":\n"+e, id=node.id, type="error")
 		}
 	}
 	var jsfill = node.getAttribute("jsfill");
 	if (jsfill !== null && jsfill !== "") {
 		try {
-			node.innerHTML = escapeHTML(stringify(eval(jsfill+";")))
+			node.innerHTML = stringify(eval(jsfill+";"))
+			if (node.id !== "") {
+				displayMessage("\"jsfill\" successfully evaluated at id=\""+
+							   node.id+"\":", id=node.id)
+			}
 		} catch(e) {
-			console.warn("Could not evaluate \"jsfill\" attribute in:\n", node,"\nbecause:\n", e)
+			displayMessage("Could not evaluate \"jsfill\" in element with id=\""+
+						   node.id+"\":\n"+e, id=node.id, type="error")
 		}
 	}
 }
@@ -1268,7 +1320,7 @@ function evalJSAttr(node) {
 pslides.download = function(node, obj=null, filename=null) {
 	try {
 		downloadObj(node, obj, filename)
-		displayMessage(message="&#9989; Download successful.", id=node.id, type="log")
+		displayMessage(message="&#9989; <b>Download successful</b>:\nYou can find the downloaded file in your \"Downloads\" folder.", id=node.id, type="log")
 	} catch(e) {
 		displayMessage(message="&#10060; "+String(e), id=node.id, type="error")
 	}
@@ -1305,7 +1357,7 @@ function updateURIParameters(url, params) {
 	
     // Update or add parameters
     Object.entries(params).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
+        if (Array.isArray(value) && value.length>0) {
 			searchParams.set(key, value.join(" "));
 		} else if (![null,undefined,""].includes(value)) {
 			searchParams.set(key, value);
@@ -1314,21 +1366,33 @@ function updateURIParameters(url, params) {
     return urlObj.toString();
 }
 
-function setAgenda() {
-	var params = extractParameter(["root","prj","subj","agenda","session","cond","format"]),
-		agenda = params["agenda"];
+pslides.isValidURL = function(string) {
+	if (typeof string !== "string") return false;
+	try {
+		new URL(string);
+	} catch {
+		return false;  
+	}
+	return true;
+}
+
+function createRedirectURI(href=null) {
+	let params = extractParameter(["root","prj","subj","agenda","session","cond"]),
+		agenda = params["agenda"],
+		isValid = pslides.isValidURL(href);
 	if ([undefined,null,""].includes(agenda)) return;
 	// URL parameter takes precedence over provided content:
 	
 	// now go through all p-redirect and p-exit elements.
 	// URLs should be updated according to the URL parameters.
 	console.log("Adopted URI parameters: ", stringify(params))
-	var d = document.body.querySelectorAll("p-redirect"), agenda0 = "";
+	var agenda0 = "";
 	//console.error("agenda: ", agenda)
 	
 	//console.warn(agenda0)
-	if (agenda.length > 0) {
-		console.log("agenda[0].trim(): ", agenda[0].trim())
+	if (isValid) {
+		agenda0 = updateURIParameters(href, params);
+	} else if (agenda.length > 0) {
 		agenda0 = agenda[0].trim();
 		var agenda0_split = agenda0.split("/");
 		if (!["http:","https:","file:"].includes(agenda0_split[0].toLowerCase())) {
@@ -1336,31 +1400,16 @@ function setAgenda() {
 				agenda0 = "/"+agenda0;
 			}
 			agenda0 = document.head.baseURI+agenda0;
-		}
-		console.log("agenda0: ", agenda0)
-		
+		}		
 		params["agenda"] = agenda.slice(1).join(" ");
-		
 		agenda0 = updateURIParameters(agenda[0], params);
 		console.log("agenda0: ", agenda0)
 		setMetaElement("agenda", agenda.join(" "));
 	} else {
-		// ???
+		agenda0 = updateURIParameters(window.location.href, params);
 	}
 	
-	//console.log(agenda0)
-	
-	// set the current p-redirect elements to the first URL and append URL component to the rest of the array.
-	var inner = "";
-	for (i=0; i<d.length;i++) {	
-		d[i].setAttribute("href", agenda0) // 
-		inner = d[i].innerHTML.trim()
-		if (inner === "") {
-			inner = "<svg height='35px' width='35px' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg' fill='none'><path fill='black' fill-rule='evenodd' d='M8 3.517a1 1 0 011.62-.784l5.348 4.233a1 1 0 010 1.568l-5.347 4.233A1 1 0 018 11.983v-1.545c-.76-.043-1.484.003-2.254.218-.994.279-2.118.857-3.506 1.99a.993.993 0 01-1.129.096.962.962 0 01-.445-1.099c.415-1.5 1.425-3.141 2.808-4.412C4.69 6.114 6.244 5.241 8 5.042V3.517zm1.5 1.034v1.2a.75.75 0 01-.75.75c-1.586 0-3.066.738-4.261 1.835a8.996 8.996 0 00-1.635 2.014c.878-.552 1.695-.916 2.488-1.138 1.247-.35 2.377-.33 3.49-.207a.75.75 0 01.668.745v1.2l4.042-3.2L9.5 4.55z' clip-rule='evenodd'/></svg>"
-		}
-		// "Next page"
-		//d[i].innerHTML = "<a href=\""+agenda0+"\">"+inner+"</a>"
-	}
+	return agenda0;
 }
 
 function createSubjCodes() {
@@ -1369,19 +1418,19 @@ function createSubjCodes() {
 	// Subject Code
 	var subj = code.subj, d = setMetaElement("subj")
 	if (subj === "") subj = d.getAttribute("content");
-	if (subj === null || subj === "") {
+	if ([null,undefined,""].includes(subj)) {
 		var n      = ifNullStr(d.getAttribute("n"),"3"), 
 			chunks = ifNullStr(d.getAttribute("chunks"),"3"), 
 			sep    = ifNullStr(d.getAttribute("sep"),"-"),
 			subj   = generateCode(n=eval(n), chunks=eval(chunks), set=36, sep=sep);
 		/*d.setAttribute("content", subj);
 		outObj.meta.subj = subj;*/
-		setMetaElement("subj", subj)
 	} else {
 		/*d.setAttribute("content", subj)
 		outObj.meta.subj = subj;*/
-		setMetaElement("subj", subj)
 	}
+	setMetaElement("subj", subj)
+	outObj.meta.origSubjCode = subj
 		
 	// Session code: if not in a URL parameter, just generate it.
 	if (code.session === "") code.session = generateUTCCode();
@@ -1406,7 +1455,7 @@ async function requestStartSession() {
 		for (const [key, value] of Object.entries(params)) {
 			if (![null,""].includes(value)) urlArray.push(encodeURIArg(value, key));
 		}
-		var url = window.location.origin+"/access/subj/start_session.php?"+urlArray.filter((x) => ifNullStr(x) !== "").join("&")
+		var url = window.location.origin+"/"+pslides.serverSubjPath+"start_session.php?"+urlArray.filter((x) => ifNullStr(x) !== "").join("&")
 		try {
 			console.log("Requesting session start:\n",url,"\nbody:\n",opt);
 			var res = await fetch(url, {method: "POST", body: opt.join(" ")});
@@ -1578,6 +1627,8 @@ function findNextSlide(current) {
 	
 	current = candidate;
 	while (candidate !== null && candidate.tagName !== "P-SLIDE") {
+		evalJSAttr(candidate);
+		
 		// nextElementSibling: go through all possibilities
 		if (candidate === null) {
 			console.error("Unexpected null value of the \"candidate\" element.");
@@ -1585,6 +1636,10 @@ function findNextSlide(current) {
 		} else if (candidate.tagName==="SCRIPT" && !firstSlide) { // script
 			tryEval(candidate.innerText, at=candidate)
 			candidate = treeFindNextNode(candidate)
+		} else if (["AUDIO","VIDEO"].includes(candidate.tagName) && 
+		           ![null,"false","0"].includes(candidate.getAttribute("autoplay"))) {
+			candidate.play();
+			candidate = treeFindNextNode(candidate);
 		} else if (candidate.tagName === "P-WHILE") { // p-while
 			candidate = handleStartPWhile(candidate);
 		} else if (candidate.tagName === "P-IF") { // ... Now run p-if
@@ -1621,6 +1676,15 @@ function findPreviousSlide(current) {
 	}
 		
 	while (candidate !== null && candidate.tagName !== "P-SLIDE") {
+		
+		// pause audio and video
+		if (candidate !== null) {
+			if (["AUDIO","VIDEO"].includes(candidate.tagName) && 
+				![null,"false","0"].includes(candidate.getAttribute("autoplay"))) {
+				candidate.pause();
+			}
+		}
+		
 		// nextElementSibling: go through all possibilities
 		if (candidate === null) {
 			console.error("Unexpected null value of the \"candidate\" element.");
@@ -1642,14 +1706,16 @@ function handleRedirect(node) {
 	if (node.getAttribute("send") !== null) {
 		sendOutData(element=node);
 	}
-	var href = node.getAttribute("href");
+	
+	// update subject code!
+	let redir = createRedirectURI(node.getAttribute("href")); // updateURIParameters(node.getAttribute("href"), extractParameter("subj"))
+	
 	var a = document.createElement("a");
-	a.setAttribute("href", href);
+	a.setAttribute("href", redir);
 	document.body.appendChild(a);
 	a.click();
 	a.remove();
 }
-
 
 /*
 p-records : at the beginning of every new slide: store in HTML document.
@@ -1796,7 +1862,7 @@ function pointerUpHandleButtons(target) {
 		var href = target.getAttribute("href");
 		var params = extractParameter(["root","prj","subj"]);
 		if ([null,undefined,""].includes(href) || href.trim() === "") {
-			href = window.location.origin+"/u/"+params.root+"/"+params.prj+"/app/?subj="+params.subj;
+			href = window.location.origin+pslides.serverRootPath+"/"+params.root+"/"+params.prj+"/app/?subj="+params.subj;
 		}
 		window.location.href = href;
 	}
@@ -1834,19 +1900,22 @@ function lastArrayValue(x) {
 }
 
 function stringifyHTMLAttribute(name, value="") {
-	if (![undefined,null,""].includes(value) && value.trim() !== "") {
-		return " "+name+"=\""+escapeString(value)+"\"";
+	if ([undefined,null,""].includes(value) || value.trim() === "") {
+		return "";
 	}
-	return "";
+	return " "+name+"=\""+escapeString(value)+"\"";
 }
 
-pslides.checkSubjCode = function(node) {
-	node.value = node.value.toUpperCase().replace(/[^A-Z0-9]/g, "-").replace(/[-]{2,}/g, "-");
+// ????
+pslides.changeSubjCode = function(node) {
 	return node.value;
 }
 
-function handlePInput(node) {
+function unpackPInput(node) {
+	console.log("unpackPInput() called.")
 	/*
+		rendered on document load.
+		
 		// subj:
 		<p-input type="subj" name="subject-code"></p-input>
 		
@@ -1863,21 +1932,19 @@ function handlePInput(node) {
 		<label></label>     /|\ --> label (each row)
 		<p-mold spots="1"> //|\\ anything in a mold could be picked up.
 	*/
-	if (!isDOMElement(node) || node.tagName!=="P-INPUT" || 
-		node.querySelector("input") !== null) {
-		return;
-	}
+	if (!isDOMElement(node)) return; // node.querySelector("input")!==null
 		
-	var arr = [], newId = "", inner="",
+	let arr = [], newId = "", inner="",
 		name    = escapeString(ifNullStr(node.getAttribute("name"))), 
 		pid     = node.getAttribute("for"), // for attribute
-		type    = node.getAttribute("type"),
+		type    = ifNullStr(node.getAttribute("type")).trim().toLowerCase(),
 		forStr  = stringifyHTMLAttribute("for", pid),
 		nameStr = stringifyHTMLAttribute("name", name),
 		idStr   = stringifyHTMLAttribute("id", pid);
-	if (type===null) type="";
 	
-	type = type.trim().toLowerCase();
+	console.log("type === \""+type+"\"")
+	console.warn("name", name)
+	console.warn("nameStr", nameStr)
 	
 	if (type==="checkbox" && node.querySelector("label")===null) {
 		node.innerHTML = "<label"+forStr+nameStr+">"+
@@ -1892,10 +1959,15 @@ function handlePInput(node) {
 							   "<span>"+arr[i].innerHTML+"</span>"
 		}
 	} else if (type==="radio") {
-		arr = node.querySelectorAll("label");
+		arr = node.querySelectorAll("label"); //////////////////////////// What if someone forgot to set an ID?
 		for (var i=0;i<arr.length;i++) {
+			arr[i].setAttribute("name", name);
 			pid = arr[i].getAttribute("for")
-			if ([undefined,null,""].includes(pid)) pid = name+":"+i;
+			if ([undefined,null,""].includes(pid)) {
+				pid = name+":"+arr[i].innerText
+					  .replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
+					  .trim().replaceAll(/[\s\n\r\t]+/g, "_");
+			}
 			arr[i].innerHTML = "<input type='radio'"+nameStr+stringifyHTMLAttribute("id", pid)+"/>"+
 							   "<span>"+arr[i].innerHTML+"</span>"
 		}
@@ -1908,13 +1980,17 @@ function handlePInput(node) {
 			if (!isNaN(Number(n)) && n > 0) {
 				options = rangeIndex(1, n)
 			}
+		} else if (options.indexOf(";")>-1) {
+			options = options.split(";")
 		} else {
-			options = splitWhitespace(options, ignoreQuotes=false);
-			console.log("options: ", options)
+			options = splitWhitespace(options, ignoreQuotes=true);
+			//console.log("options: ", options)
 		}
 		
 		for (var i=0; i<options.length; i++) {
-			newId = name+":"+escapeString(options[i]).replaceAll(" ","_");
+			newId = name+":"+escapeString(options[i])
+			        .replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
+					.trim().replaceAll(/[\s\n\r\t]+/g, "_");
 			inner += "<label for=\""+newId+"\">"+
 						 "<input type='radio' id=\""+newId+"\""+nameStr+"/>"+
 						 "<span>"+options[i]+"</span>"+
@@ -1923,14 +1999,28 @@ function handlePInput(node) {
 		node.innerHTML = inner;
 	} else if (type === "subj") {
 		//node.setAttribute("contenteditable","true")
-		var label = node.querySelector("label")
+		let label = node.querySelector("label")
 		if (label===null) { 
-			node.innerHTML = "<label"+forStr+">"+node.innerHTML+"<input type=\"text\""+idStr+"/></label>"
-		} else {
-			if (label.getAttribute("for")===null) label.setAttribute("for",pid);
-			idStr = stringifyHTMLAttribute("id", label.getAttribute("for"))
-			label.innerHTML = label.innerHTML+"<input type=\"text\" onkeyup=\"pslides.checkSubjCode(this)\""+idStr+"/>"
+			label = document.createElement("label");
+			if (![undefined, null, ""].includes(pid)) label.setAttribute("for", pid);
+			label.innerHTML = node.innerHTML
+			node.appendChild(label);
 		}
+		if (label.getAttribute("for")!==null) label.setAttribute("for",pid);
+		idStr = stringifyHTMLAttribute("id", label.getAttribute("for"))
+		//console.log("idStr: ", idStr)
+		label.innerHTML = label.innerHTML+"<input type=\"text\""+idStr+"/>"
+		label.addEventListener("keyup", (event) => {
+			let textInput = event.target.value
+			                     .toUpperCase().replace(/[^A-Z0-9]/g, "-").replace(/[-]{2,}/g, "-");
+			let textInputSplit = textInput.split("-");
+			textInput = textInputSplit.slice(0,-1).concat(textInputSplit.slice(-1)[0].match(/.{1,3}/g)).join("-")
+			event.target.value = textInput;
+			if (textInput.split("-").length<3) { // change back to original subj code.
+				textInput = outObj.meta.origSubjCode;
+			}
+			setMetaElement(name="subj", content=textInput)
+		}, false);
 	}
 }
 
@@ -2115,6 +2205,9 @@ window.onload = function() {
 	// initialize the array for querySelectorAll()
 	var d = [];
 	
+	d = document.querySelectorAll("p-input");
+	for (var i=0; i<d.length; i++) unpackPInput(d[i]);
+	
 	//var d = document.querySelectorAll("[jsattr][jsfill]");
 	//for (var i=0; i<d.length; i++) evalJSAttr(d[i]);
 	
@@ -2133,9 +2226,7 @@ window.onload = function() {
 	const lastSlide = document.createElement("p-slide");
 	lastSlide.innerHTML = "<p-center><p>Exit website:</p><p-exit>Exit</p-exit></p-center>"
 	document.body.appendChild(lastSlide);
-	
-	setAgenda();
-	
+		
 	// add to every slide a button.
 	d = document.querySelectorAll("p-next,p-back,p-exit"); // ,p-redirect
 	for (var i=0; i < d.length; i++) {
@@ -2167,6 +2258,8 @@ window.onload = function() {
 		} else if (d[i].tagName === "P-EXIT") {
 			if (empty) d[i].innerHTML = "&nbsp;&nbsp;x&nbsp;&nbsp;";
 			//d[i].setAttribute("onclick", moreclick+"window.location.href=\""+url+"\";")
+		} else if (d[i].tagName === "P-REDIRECT") {
+			if (empty) d[i].innerHTML = "<svg height='35px' width='35px' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg' fill='none'><path fill='black' fill-rule='evenodd' d='M8 3.517a1 1 0 011.62-.784l5.348 4.233a1 1 0 010 1.568l-5.347 4.233A1 1 0 018 11.983v-1.545c-.76-.043-1.484.003-2.254.218-.994.279-2.118.857-3.506 1.99a.993.993 0 01-1.129.096.962.962 0 01-.445-1.099c.415-1.5 1.425-3.141 2.808-4.412C4.69 6.114 6.244 5.241 8 5.042V3.517zm1.5 1.034v1.2a.75.75 0 01-.75.75c-1.586 0-3.066.738-4.261 1.835a8.996 8.996 0 00-1.635 2.014c.878-.552 1.695-.916 2.488-1.138 1.247-.35 2.377-.33 3.49-.207a.75.75 0 01.668.745v1.2l4.042-3.2L9.5 4.55z' clip-rule='evenodd'/></svg>"
 		}
 	}
 	
@@ -2332,7 +2425,8 @@ function handlePIf(pif) {
 	} else {
 		res = pif; pif.removeAttribute("ignore")
 	}
-	pif = pif.nextElementSibling; 
+	pif = pif.nextElementSibling;
+	console.log("P-IF", pif)
 	while (pif !== null && pif.tagName === "P-ELIF") {
 		if (res !== null) {
 			pif.setAttribute("ignore", "true")
@@ -2345,6 +2439,7 @@ function handlePIf(pif) {
 			}
 		}
 		pif = pif.nextElementSibling;
+		console.log("P-IF", pif)
 	}
 	if (pif !== null && res !== null && pif.tagName === "P-ELSE") {
 		pif.setAttribute("ignore", "true")
@@ -2368,12 +2463,12 @@ function getDistantCousin(node) {
 // DYSFUNCTIONAL FOR P-IF ?
 function renderSlide(slide) {
 	var d = slide.firstElementChild, cond=false;
+	pslides.autoplayed = [];
 	while (d !== null && d !== slide) {
 		// First, move to the next node and try to render
 		
 		// Now process the next element:
 		evalJSAttr(d);
-		handlePInput(d);
 		//console.log("evalJSAttr()", stringifyNodeTag(d))
 		
 		
@@ -2390,15 +2485,20 @@ function renderSlide(slide) {
 			
 		} else */
 		if (d.tagName === "SCRIPT") {
+			//console.log("renderSlide SCRIPT: ", d)
 			tryEval(d.innerHTML, at=d)
+		} else if (["AUDIO","VIDEO"].includes(d.tagName) && 
+		           ![null,"false","0"].includes(d.getAttribute("autoplay"))) {
+			pslides.autoplayed.push(d);
 		}
+		
 		if (d.tagName === "P-IF") {
 			d = handlePIf(d);
-			if (d.tagName === "P-IF" && d.firstElementChild !== null) {
+			if (d !== null && d.tagName === "P-IF" && d.firstElementChild !== null) {
 				d = d.firstElementChild;
-			} else if (d.tagName === "P-IF" && d.nextElementSibling !== null) {
+			} else if (d !== null && d.tagName === "P-IF" && d.nextElementSibling !== null) {
 				d = d.nextElementSibling;
-			} else if (d.tagName === "P-IF") {
+			} else if (d !== null && d.tagName === "P-IF") {
 				d = getDistantCousin(d);
 			}
 			console.log("current d: ", d)
@@ -2619,10 +2719,26 @@ function changeSlide(next=1) {
 		clearTimeout(pslides.slideTimerTimeout);
 		pslides.slideTimerTimeout = null;
 	}
+	
+	// any played audio or video files: stop them
+	if (!Array.isArray(pslides.autoplayed)) pslides.autoplayed = [];
+	for (var i=0; i<pslides.autoplayed.length; i++) {
+		var playing = !pslides.autoplayed[i].paused;
+		pslides.autoplayed[i].pause();
+		if (playing) {
+			var playReset = pslides.autoplayed[i].getAttribute("autoreset");
+			if (playReset !== null && !isNaN(Number(playReset))) {
+				pslides.autoplayed[i].currentTime = Number(playReset);
+			} else if (playReset !== null && playReset.trim().toLowerCase() !== "false") {
+				pslides.autoplayed[i].currentTime = 0
+			}
+		}
+	}
+	
 	// add responses to the "outObj" object:
 	var oldSlide = pslides.currentSlide, // document.querySelector("p-slide[current]");
 		newSlide = browseSlides(oldSlide, next);
-	
+		
 	// go through all inputs in the p-slide (except for keyboard responses):
 	var d = oldSlide.querySelectorAll("input,textarea,select,p-gencode>span,p-var,[name]:not(p-records>[name],p-input)"),
 		tmpRes = {content:{}, variables:{}, records:{}, key: pslides.key, pointer: pslides.pointer, visibility: pslides.visibility}; // mouse: pslides.mouse
@@ -2670,11 +2786,9 @@ function changeSlide(next=1) {
 	
 	// get the current instance of pslides into the outObj !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	
-	//pslides.mouse = {t:[],x:[],y:[],el0:[],el1:[]};
 	pslides.pointer    = {t:[],x:[],y:[],f:[],rx:[],ry:[],ang:[],el0:[],el1:[],type:[]};
 	pslides.key        = {up:{t:[],k:[]}, down:{t:[],k:[]}};
 	pslides.visibility = {t:[], state:[]};
-	// pslides.pointer = {t:[[]],x:[[]],y:[[]],f:[[]],rx:[[]],ry:[[]],el0:[],el1:[],}
 	
 	oldSlide.removeAttribute("current");
 	newSlide.setAttribute("current",""); // set the new current slide
@@ -2692,9 +2806,17 @@ function changeSlide(next=1) {
 	pushSlide();
 	// extract maxms from the new slide.
 	pslides.currentSlide = newSlide;
-	var maxms = prepareSlide(newSlide);		
+	var maxms = prepareSlide(newSlide);
 	newSlide.setAttribute("p_hiddenclass", "current");
+	/*
+	document.getElementById("myaudio").play()
+	setTimeout(function(){var audio = document.getElementById("myaudio"); audio.pause(); audio.currentTime = 0}, 1000)
+	*/
 	pslides.slideStartTime = new Date();
+	for (var i=0; i<pslides.autoplayed.length; i++) {
+		pslides.autoplayed[i].play();
+	}
+	
 	if (maxms < Infinity) {
 		const const_slideNumber = pslides.slideNumber;
 		setTimeout(
