@@ -19,6 +19,8 @@ kbd {
 	box-shadow: 1px 2px 4px #777777;
 	margin-left: 0.1em;
 	margin-right: 0.1em;
+	white-space: nowrap;
+	overflow-x: hidden;
 }
 
 p-gencode, p-subjcode {
@@ -47,7 +49,6 @@ p-gencode>button, p-subjcode>button {
 	width: 2.2em;
 	cursor: pointer;
 }
-
 p-gencode>button svg, p-subjcode>button svg {
 	width: 1.3em;
 	height: 1.3em;
@@ -83,6 +84,10 @@ p-next, p-back, p-exit, p-redirect, p-download, p-upload {
 p-next>*, p-back>*, p-exit>*, p-redirect>*, p-download>*, p-upload>* {
 	vertical-align:middle;
 	display:inline-block;
+	text-align:center;
+}
+p-download>svg, p-upload>svg {
+	pointer-events: none;
 }
 p-exit a, p-redirect {
 	font-size: 1.em;
@@ -166,12 +171,20 @@ p-formframe {
 p-formframe p {
 	text-align: inherit;
 }
+p-formframe h1 {
+	text-align: center;
+}
+p-formframe textarea {
+	width: 100%;
+	min-height: 5vh;
+}
 p-nobr, nobr {
 	white-space: nowrap;
 	overflow-x: hidden;
+	font-size: inherit;
 }
 
-@media (max-width:650px) { /*handheld */
+@media (max-width:650px) { /* handheld */
 	p-center, p-fixcross {
 		top: 50%;
 		left: 50%;
@@ -252,6 +265,10 @@ p-input>* {
 	align-items: center;
 }
 p-input label {
+	display: flex;
+	flex-direction: row;
+
+
 	background-color: white;
 	padding: 0.2em;
 	transition: filter 0.4s ease;
@@ -259,20 +276,19 @@ p-input label {
 	text-align: inherit;
 	justify-content: inherit;
 }
-p-input label>* {
-	display: block;
-	/*flex-direction: column;*/
-	font-size: inherit;
-	color: inherit;
-}
 p-input label:hover {
 	filter: brightness(97%);
 }
 
+p-input label>* {
+	display: block;
+	/* flex-direction: column;*/
+	font-size: inherit;
+	color: inherit;
+}
 p-input label input[type=radio],
 p-input label input[type=checkbox] {
-	margin-left: 0.5em;
-	margin-right: 1em;
+	margin: 0em 0.5em 0em 0.5em;
 	font-size: inherit;
 }
 
@@ -282,14 +298,18 @@ label:has(input[type=checkbox]:checked) {
 	filter: brightness(92%);
 }
 
-p-input label>input[type=checkbox] {
+input[type=checkbox] {
 	accent-color: blue;
+}
+input[type=checkbox][answer=false] {
+	accent-color: red;
+	content: "x"; /* "✕" */
 }
 
 p-input input[type=text] {
 	border: 3px solid black;
 	border-radius: 0.5em;
-	padding: 0.5em;
+	padding: 0em;
 	margin: 0em 1em;
 	background-color: white;
 }
@@ -297,7 +317,7 @@ p-input[type=subj] input[type=text] {
 	width: 16em;
 	font-size: 1.5em;
 	font-weight: bold;
-	padding: 0.2em 0.5em;
+	padding: 0.2em 0em;
 	font-family: monospace;
 }
 
@@ -344,5 +364,71 @@ p-frame {
 	justify-content: center;
 }
 
+
+
+
+/*************************
+	Drag and drop Items
+**************************/
+p-dragdrop {
+	display: block;
+	height: auto;
+	padding: 10px;
+	border-radius: 5px;
+	box-shadow: inset 0 3px 7px rgba(0,0,0,0.6);
+	margin: 10px;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+p-dragdrop>* {
+	box-shadow: 0 3px 7px rgba(0,0,0,0.6);
+	padding: 10px;
+	margin: 5px;
+	border-radius: 3px;
+	cursor: grab;
+	display: inline-block;
+	position: relative;
+	background-color: #DDEEFF;
+	text-align: center;
+	transform-origin: center;
+	animation: p-shrinktransform 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; /* p-growHorizontally */
+}
+p-dragdrop>[draggable="false"],
+p-dragdrop>[draggable="false"]:active {
+	cursor: auto;
+}
+p-dragdrop>[dragging] {
+	opacity: 1.0;
+}
+p-dragdrop>*:active {
+	cursor: grabbing;
+	cursor: -moz-grabbing;
+	cursor: -webkit-grabbing;
+}
+p-dropindicator,
+p-dragdrop p-dropindicator {
+	filter: brightness(50%);
+	opacity: 0.0;
+	z-index: 9;
+	position: relative;
+	margin: 0px;
+}
+p-dragdrop[layout=col]>*,
+p-dragdrop[layout=column]>* {
+	display: block;
+	margin: 10px;
+}
+@keyframes p-shrinktransform {
+	from {
+		transform: scaleX(1.3) scaleY(1.3); /* make smaller in JavaScript! */
+	}
+	to {
+		transform: scaleY(1) scaleY(1);
+	}
+}
 
 

@@ -63,7 +63,94 @@
 // first, start the pslides object.
 const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null, autoplayed:[],
                  slideStartTime: new Date(), slideEndTime: new Date(),
+				 messageTexts: {
+					"beforeunload": {
+						"en":"Are you sure you want to quit? You will <b>not</b> be able to continue with this survey at a later point.",
+						"de":"Sind Sie sicher, dass Sie abbrechen möchten? Sie können diese Umfrage danach <b>nicht</b> fortsetzen.",
+						"fr":"Êtes-vous sûr de vouloir quitter ? Vous ne pourrez <b>pas</b> poursuivre ce sondage.",
+					},
+					"missingResponses": {
+						"en":"Please fill out all mandatory fields. Then you can continue to the next page.",
+						"de":"Bitte füllen Sie alle Pflichtfelder aus. Dann können Sie fortfahren.",
+						"fr":"Veuillez remplir tous les champs obligatoires. Vous pourrez ensuite passer à la page suivante.",
+					},
+					"sendDataLocalToExternal": {
+						"en":"You cannot send data to an external server when the current survey is on a local file.\nThe current link starts with \"file://…\" and does not follow the HTTP protocol\n(starting with \"http://…\" or \"https://…\").",
+						"de":"Beim Verwenden lokaler Dateien können keine Daten an externe Server gesendet werden.\nDer Link beginnt mit \"file://…\" und entspricht nicht dem HTTP-Protokoll\n(beginnend mit \"http://…\" oder \"https://…\").",
+						"fr":"Vous ne pouvez pas envoyer de données à un serveur externe lorsque vous naviguez dans des fichiers locaux.\nLe lien commence par « file://… » et ne suit pas le protocole HTTP (commençant par « http://… » ou « https://… »).",
+					},
+					"sendDataOnFirstSlide": {
+						"en":"You cannot send data on the first slide (<code>&lt;p-slide&gt;</code>) of the page.",
+						"de":"Auf der ersten Slide (<code>&lt;p-slide&gt;</code>) der Seite können keine Daten gesendet werden.",
+						"fr":"Vous ne pouvez pas envoyer de données sur la première page (<code>&lt;p-slide&gt;</code>) du site.",
+					},
+					"sendDataError": {
+						"en":"An error has occured when trying to upload the data:",
+						"de":"Ein Fehler ist beim Hochladen der Daten aufgetreten:",
+						"fr":"Une erreur s'est produite lors de la tentative de chargement des données:",
+					},
+					"RequestNotSent": {
+						"en":"Request not sent.",
+						"de":"Anfrage nicht gesendet.",
+						"fr":"Requête non envoyée …"
+					},
+					"PreparingRequest": {
+						"en":"Preparing request …",
+						"de":"Bereite Anfrage vor …",
+						"fr":"Préparation de la demande …"
+					},
+					"WaitingForServer": {
+						"en":"Waiting for server to respond …",
+						"de":"Warte auf Antwort des Servers …",
+						"fr":"En attente de la réponse du serveur …"
+					},
+					"DownloadingData": {
+						"en":"Downloading data …",
+						"de":"Lade Daten herunter …",
+						"fr":"Téléchargement des données sur l'ordinateur …"
+					},
+					"UploadingData": {
+						"en":"Uploading data …",
+						"de":"Lade Daten hoch …",
+						"fr":"Téléchargement des données sur le serveur …"
+					},
+					"ServerProcessingDate": {
+						"en":"Server is processing the data …",
+						"de":"Server verarbeitet Daten …",
+						"fr":"Le serveur traite les données …"
+					},
+					"BeforeClosingWindow": {
+						"en":"Are you sure you want to close the window? All progress will be lost and you will not be able to continue the survey at a later time.",
+						"de":"Möchten Sie das Fenster wirklich schließen? Alle Fortschritte gehen verloren und Sie werden die Umfrage nicht fortgesetzen können.",
+						"fr":"Êtes-vous sûr de vouloir fermer la fenêtre ? Toute votre progression sera perdue et vous ne pourrez pas reprendre le sondage ultérieurement."
+					},
+					"UnansweredQuestions": {
+						"en":"Please provide an answer to the questions marked in red.",
+						"de":"Bitte machen Sie eine Angabe bei den rot markierten Fragen.",
+						"fr":"Veuillez répondre aux questions marquées en rouge."
+					},
+					"Status": {
+						"en":"Status",
+						"de":"Status",
+						"fr":"Statut",
+						"zh":"状态"
+					},
+					"DownloadSuccessful": {
+						"en":"Download successful",
+						"de":"Herunterladen erfolgreich",
+						"fr":"Téléchargement réussi",
+						"zh":"下载成功"
+					},
+					"FindDownload": {
+						"en":"You can find the downloaded file in your \"Downloads\" folder.",
+						"de":"Sie können die heruntergeladenen Daten im Ordner \"Downloads\" finden.",
+						"fr":"Vous trouverez le fichier téléchargé dans votre dossier <p-nobr>« Téléchargements »</p-nobr>.",
+						"zh":"您可以在“下载”文件夹中找到下载的文件。"
+					}
+				 },
+				 language: {lang: "en", script: null, region: null},
 				 settings: {pointerTemporalResolution: 20},
+				 lastSubmission: Number(new Date())*2,
 				 key: {down:{t:[],k:[]},up:{t:[],k:[]}}, visibility : {t:[],state:[]},
 				 pointer: {t:[],x:[],y:[],f:[],rx:[],ry:[],ang:[],el0:[],el1:[],type:[]}, activePointers: new Map(),
                  nextSlideKeys: [], backSlideKeys: [], slideNumber: 0, isClickedDown: false,
@@ -71,8 +158,55 @@ const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null
 				 eventListeners: {onmousedown:null,onmouseup:null,onmousemove:null,
 				                  onkeydown:null,onkeyup:null,
 								  onpointermove:null,onpointerdown:null,onpointerup:null,onpointercancel:null,
-								  onfullscreenenter:null,onfullscreenexit:null}
+								  onfullscreenenter:null,onfullscreenexit:null},
+				dropIndicator: document.createElement("p-dropindicator")
 				};
+
+
+pslides.setLanguage = function() {
+	// match BCP-47 language tag components:
+	// - Language: 2-3 lowercase letters
+	// - Optional Script: 4 letters, titlecase (first capital, rest lowercase)
+	// - Optional Region: 2 uppercase letters or 3 digits
+	
+	pslides.language.lang = "en";
+	let str = document.documentElement.lang;
+	if (isEmpty(str)) str = document.body.getAttribute("lang");	
+	if (isEmpty(str)) str = navigator.languages[0];	
+	let spl = str.replaceAll(/[ \t\n_-]{1,}/g, "-").split("-").filter((x) => x !== "");
+	if (spl.length == 0) return;
+	pslides.language.lang = spl[0].toLowerCase();
+	if (spl.length == 1) return;
+
+	let isScript = true;
+	// is it a script?
+	if (spl[1].length == 2 && // is it a region?
+		spl[1].substring(0,2) == spl[1].substring(0,2).toUpperCase()) {
+		pslides.language.region = spl[1];
+	} else if (spl[1][0] == spl[1][0].toUpperCase() && // is it a script?
+		spl[1].substring(1) == spl[1].substring(1).toLowerCase()) {
+		pslides.language.script = spl[1];
+		isScript = false;
+	}
+	
+	if (spl.length==2) return;
+	
+	if (isScript) {
+		pslides.language.script = spl[2]
+	} else if (spl[2].length == 2) {
+		pslides.language.region = spl[2]
+	}
+}
+
+pslides.printLanguage = function() {
+	let res = pslides.language.lang;
+	if (!isEmpty(pslides.language.script)) res += "-"+pslides.language.script;
+	if (!isEmpty(pslides.language.region)) res += "-"+pslides.language.region;
+	return res;
+}
+
+// try looking through region and script before going through normal country codes.
+pslides.setLanguage();
 
 // define pdata if it hasn't been created yet
 //if (typeof pslides.data !== 'object') pslides.data = {};
@@ -144,7 +278,7 @@ function stringify(x) {
 function displayMessage(message, id=null, type=null) {
 	type = ifNullStr(type).toLowerCase();
 	var query = "p-message[for=\""+escapeString(id)+"\"]";
-	if ([undefined,null,""].includes(id) || document.querySelector(query) === null) {
+	if (isEmpty(id) || document.querySelector(query) === null) {
 		if (type==="error") {
 			console.error(message);
 		} else if (type.indexOf("warn")>-1) {
@@ -322,11 +456,624 @@ function tryEval(str, at="", ifError=null) {
 }
 
 function evalScript(node) {
-	
 	displayMessage("Could not evaluate \"jsfill\" in element with <p-nobr>id=\""+
 						   node.id+"\":</p-nobr>\n"+e, id=node.id, type="error")
-
 }
+
+// split string into an array: split by ";", otherwise whitespace
+function stringToArray(value) {
+	let res = null, n = null;
+	if (isEmpty(value)) return null;
+	
+	value = value.trim();
+	n = value.match(/[0-9]+/g);
+	
+	if (value.indexOf(";")>-1) {
+		res = value.split(";")
+		for (val of res) val = val.trim();
+	} else if (value.match(/[ \n\t]/g)!== null) {
+		res = splitWhitespace(value, ignoreQuotes=true);
+	} else if (n!==null) {
+		n = Number(n.join(""))
+		if (!isNaN(Number(n)) && n > 0) {
+			res = rangeIndex(1, n);
+		}
+	}
+	//console.log("value: ", value)
+	return res
+}
+
+function unpackPInput(node) {
+	console.log("unpackPInput() called.")
+	/*
+		rendered on document load.
+		
+		// subj:
+		<p-input type="subj" name="subject-code"></p-input>
+		
+		// Radio:
+		<p-input type="radio" name="question_name" js=""><label for="ID"></label>...</p-input>
+		
+		// Likert scale:
+		<p-input type="likert" name="" options="" n=""></p-input> // js are the labels, overwrites steps
+		
+		// Checkbox:
+		<p-input type="checkbox" for="" name=""></p-input>
+		// also multiple check
+		                     Î
+		<label></label>     /|\ --> label (each row)
+		<p-mold spots="1"> //|\\ anything in a mold could be picked up.
+	*/
+	if (!isDOMElement(node)) return; // node.querySelector("input")!==null
+		
+	let arr = [], newId = "", inner="",
+		name    = escapeString(ifNullStr(node.getAttribute("name"))), 
+		pid     = node.getAttribute("for"), // for attribute
+		type    = ifNullStr(node.getAttribute("type")).trim().toLowerCase(),
+		forStr  = stringifyHTMLAttribute("for", pid),
+		nameStr = stringifyHTMLAttribute("name", name),
+		idStr   = stringifyHTMLAttribute("id", pid),
+		req     = "";
+	
+	if (node.getAttribute("required") !== null) req = " required";
+	
+	if (type==="checkbox" && node.querySelector("label")===null) {
+		node.innerHTML = "<label"+forStr+nameStr+">"+
+							"<input type=\"checkbox\""+nameStr+idStr+req+"/><span>"+node.innerHTML+"</span>"+
+						 "</label>";
+	} else if (type==="checkbox") {
+		arr = node.querySelectorAll("label");
+		for (var i=0;i<arr.length;i++) {
+			pid  = arr[i].getAttribute("for");
+			if ([undefined,null,""].includes(pid)) pid = name+":"+i;
+			arr[i].innerHTML = "<input type='checkbox'"+nameStr+stringifyHTMLAttribute("id", pid)+req+"/>"+
+							   "<span>"+arr[i].innerHTML+"</span>"
+		}
+	} else if (type==="radio") {
+		arr = node.querySelectorAll("label"); //////////////////////////// What if someone forgot to set an ID?
+		for (var i=0;i<arr.length;i++) {
+			arr[i].setAttribute("name", name);
+			pid = arr[i].getAttribute("for")
+			if ([undefined,null,""].includes(pid)) {
+				pid = name+":"+arr[i].innerText
+					  .replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
+					  .trim().replaceAll(/[\s\n\r\t]+/g, "_");
+			}
+			arr[i].innerHTML = "<input type='radio'"+nameStr+stringifyHTMLAttribute("id", pid)+req+"/>"+
+							   "<span>"+arr[i].innerHTML+"</span>"
+		}
+	} else if (type==="likert" && node.querySelector("label") === null) {
+		
+		// label
+		
+		var options = stringToArray(node.getAttribute("options"))
+		
+		if (options !== null) {
+			for (var i=0; i<options.length; i++) {
+				newId = name+":"+escapeString(options[i])
+						.replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
+						.trim().replaceAll(/[\s\n\r\t]+/g, "_");
+				inner += "<label for=\""+newId+"\">"+
+							 "<input type='radio' id=\""+newId+"\""+nameStr+req+"/>"+
+							 "<span>"+options[i]+"</span>"+
+						 "</label>"
+			}
+		}
+		node.innerHTML = inner;
+	} else if (type === "subj") {
+		//node.setAttribute("contenteditable","true")
+		let label = node.querySelector("label")
+		if (label===null) { 
+			label = document.createElement("label");
+			if (![undefined, null, ""].includes(pid)) label.setAttribute("for", pid);
+			label.innerHTML = node.innerHTML
+			node.appendChild(label);
+		}
+		if (label.getAttribute("for")!==null) label.setAttribute("for",pid);
+		idStr = stringifyHTMLAttribute("id", label.getAttribute("for"))
+		//console.log("idStr: ", idStr)
+		label.innerHTML = label.innerHTML+"<input type=\"text\""+idStr+"/>"
+		label.querySelector("input[type=text]").addEventListener("keyup", (event) => {
+			let textInput = event.target.value
+			                     .toUpperCase().replace(/[^A-Z0-9]/g, "-").replace(/[-]{2,}/g, "-");
+			let textInputSplit = textInput.split("-");
+			textInput = textInputSplit.slice(0,-1).concat(textInputSplit.slice(-1)[0].match(/.{1,3}/g)).join("-")
+			event.target.value = textInput;
+			
+			// Save the input subject code?
+			if (textInput.split("-").length<3) { // change back to original subj code.
+				textInput = outObj.meta.origSubjCode;
+			}
+			
+			// Change subject code in the <head> and outObj:
+			outObj.meta.subj = textInput;			
+			let metaSubj = document.head.querySelector("[name='pslides:subj']");
+			if (metaSubj !== null) {
+				metaSubj.setAttribute("content", textInput)
+			}
+			// setMetaElement(name="subj", content=); // will block changing subject code
+		});
+	}
+}
+
+// Handle p-next, p-back, p-exit
+function unpackSlideNavigation(node) {
+	var empty = node.innerHTML.trim() === "" && node.className=="", 
+		url   = window.location.origin+window.location.pathname,
+		urlq  = window.location.search,
+		moreclick = node.getAttribute("onclick")+";";
+	if (node.getAttribute("href") !== null) {
+		var urls = splitWhitespace(node.getAttribute("href"))
+		url = urls[Math.floor(Math.random() * urls.length)]
+		url = url + urlq.replace("?","&");
+	}
+	
+	/*
+	var send = node.getAttribute("send");
+	if (send !== null && send.trim() === "") {
+		moreclick += "sendOutData(element=this);";
+	} else if (send !== null && send.trim() !== "") {
+		var format = "";
+		if (![null,""].includes(node.getAttribute("format"))) {
+			format = ","+node.getAttribute("format");
+		}
+		moreclick += "sendOutData("+send+",element=this"+format+");";
+	}*/
+	if (node.tagName === "P-NEXT")  {
+		if (empty) node.innerHTML = "&gt;&gt;&gt;";
+	} else if (node.tagName === "P-BACK") {
+		if (empty) node.innerHTML = "&lt;&lt;&lt;";
+	} else if (node.tagName === "P-EXIT") {
+		if (empty) node.innerHTML = "&nbsp;&nbsp;x&nbsp;&nbsp;";
+		//node.setAttribute("onclick", moreclick+"window.location.href=\""+url+"\";")
+	} else if (node.tagName === "P-REDIRECT") {
+		if (empty) node.innerHTML = "<svg height='35px' width='35px' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg' fill='none'><path fill='black' fill-rule='evenodd' d='M8 3.517a1 1 0 011.62-.784l5.348 4.233a1 1 0 010 1.568l-5.347 4.233A1 1 0 018 11.983v-1.545c-.76-.043-1.484.003-2.254.218-.994.279-2.118.857-3.506 1.99a.993.993 0 01-1.129.096.962.962 0 01-.445-1.099c.415-1.5 1.425-3.141 2.808-4.412C4.69 6.114 6.244 5.241 8 5.042V3.517zm1.5 1.034v1.2a.75.75 0 01-.75.75c-1.586 0-3.066.738-4.261 1.835a8.996 8.996 0 00-1.635 2.014c.878-.552 1.695-.916 2.488-1.138 1.247-.35 2.377-.33 3.49-.207a.75.75 0 01.668.745v1.2l4.042-3.2L9.5 4.55z' clip-rule='evenodd'/></svg>"
+	}
+}
+
+
+
+function unpackDataid(node=document) {
+	// download csv file onto the html
+	
+	// fill in the csv files
+	var d = document.querySelectorAll("p-set[dataid],p-template");
+	for (var i=0; i<d.length; i++) {
+		var template = d[i].innerHTML, res = "", data = "";
+		var delim = d[i].getAttribute("delim"); 
+			if (delim===null) delim = "{{ }}"; delim = splitWhitespace(delim.trim())
+				
+		var dataid = ifNullStr(d[i].getAttribute("dataid"));
+		if (dataid !== "") { // fill the template with data from p-data
+			data = document.getElementById(dataid);
+			content = pslides.data[dataid] // data.innerHTML // the content should be saved to a JS object!
+			var format = getFormatAttribute(d[i])[0];
+			
+			// var format = dataid.substring(dataid.lastIndexOf("."),dataid.length).toLowerCase();
+			// fetch(dataid).then((response) => response.text()).then((text) => {data = text});
+			
+			if (content !== undefined && ["json","csv","tsv"].includes(format)) {
+				for (var j=0;j<content.length;j++) { // over j rows
+					var current_template = template
+					for (let k in content[j]) { // over k columns
+						if (Array.isArray(content[j][k]) || typeof content[j][k] === 'object') {
+							current_template = current_template.replaceAll(delim[0]+k+delim[1], stringify(content[j][k]));
+						} else {
+							current_template = current_template.replaceAll(delim[0]+k+delim[1], String(content[j][k]));
+						}
+					}
+					res += current_template;
+				}
+			} else if (![undefined,null].includes(content)) {
+				if (Array.isArray(content)) {
+					for (var j=0;j<content.length;j++) { // over j rows
+						var current_template = template
+							current_template = current_template.replace(delim[0]+"i"+delim[1], stringify(content[j][k]))
+						res += current_template;
+					}
+				}
+			}
+			d[i].innerHTML = res;
+		}
+	}
+}
+
+
+
+async function unpackPData(node) {
+	var src    = node.getAttribute("src"),
+		onld   = node.getAttribute("onload"),
+		key    = ifNullStr(node.getAttribute("id")),
+		format = getFormatAttribute(node)[0];
+	
+	if (src !== null && src.trim() !== "") {
+		console.log("Fetching data for "+stringifyNodeTag(node)+" …")
+		var str = await getData(src);
+	} else {
+		var str = node.textContent.trim(); // previously used innerHTML!
+	}
+	
+	// determine the format of the src
+	if (format==="" && src !== null && src.lastIndexOf("/") < src.lastIndexOf("\.") && 
+		src.lastIndexOf("\.")+1 !== src.lengh) {
+		format = src.substring(src.lastIndexOf("\.")+1, src.lengh)
+	}
+	
+	// Now go through the formats TSV, CSV and JSON
+	if (["csv","tsv"].includes(format) && pslides.data[key] === undefined) {
+		if (format === "tsv") {
+			pslides.data[key] = CSVToArray(str, "\t");
+		} else if (format === "csv") {
+			let sep = 
+			pslides.data[key] = CSVToArray(str, ",");
+		}
+		var header = pslides.data[key][0], pjson = [], temp = {};
+		pslides.data[key].shift();
+		for (var row=0;row<pslides.data[key].length;row++) {
+			for (col=0;col<pslides.data[key][row].length;col++) {
+				temp[header[col]] = pslides.data[key][row][col];
+			}
+			pjson.push(temp); temp = {};
+		}
+		pslides.data[key] = pjson;
+	} else if (format === "json" && pslides.data[key] === undefined) {
+		pslides.data[key] = JSON.parse(str);
+	} else if (pslides.data[key] === undefined) {
+		pslides.data[key] = str.trim().split("\n");
+	}
+	
+	// order arguments
+	var order = node.getAttribute("order"), groups = node.getAttribute("groups");
+	if (order !== null && order.indexOf("shuffle")>-1 && Array.isArray(pslides.data[key])) {
+		var garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
+		//console.log("garr:\n",garr);
+		pslides.data[key] = shuffleArray(pslides.data[key], garr)
+		if (order.indexOf("pseudoshuffle")>-1) {
+			var tol = 2;
+			if (order.lastIndexOf(")") > -1) {
+				tol = tryEval(order.substring(order.indexOf("(")+1,order.lastIndexOf(")")));
+				//console.error("tol: ", tol);
+			}
+			garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
+			pslides.data[key] = pseudoOrderArray(array=pslides.data[key], group=garr, tolerance=tol)
+		}
+	}
+	
+	// number of items
+	var n = tryEval(node.getAttribute("n"), at=node,
+					ifError="when evaluating the Attribute \"n\"");
+	if (typeof n !== "number") n = -1;
+	if (n >= 0) pslides.data[key] = pslides.data[key].slice(0, Math.floor(n));
+	
+	// now execute onload:
+	if (onld !== null && onld.trim() !== "") {
+		console.warn("!!! now evaluating \""+onld+";\"");
+		setTimeout(function(){tryEval(onld+";", at=node)},10);
+	}
+	
+	// Call handleDataid here!!!
+	//handleDataid(node=document)
+}
+
+
+
+
+///////////////////////////////////////////////// New mutationObserver!
+	
+	pslides.pushUpdate = function(node=document.documentElement) {
+		let newNode = node.cloneNode(true);
+		node.replaceWith(newNode);
+	}
+	
+	function unpackIdFill(node) {
+		const id = node.getAttribute("idfill"),
+			  idnode = document.getElementById(id);
+		if (idnode === null) {
+			console.warn("Could not fill the content of attribute \"idfill\" "+
+						 "because an element of id=\""+id+"\" does not exist.");
+			return;
+		}
+		console.log("called unpackIdFill().")
+		const clone = idnode.cloneNode(true);
+		// console.log("idToIdFill", clone.innerHTML)
+		clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+		// console.log("idToIdFill", clone.innerHTML)
+		node.innerHTML = clone.innerHTML;
+	}
+
+
+/////////////////////////////////////////////////////////////////
+//                Drag & Drop
+/////////////////////////////////////////////////////////////////
+
+function handleDragStart(e) {
+	if (isDOMElement(pslides.dropIndicator)) {
+		pslides.dropIndicator.style.width = "0px";
+	}
+	// Private function: adapt the width and height:
+	function shapeDropindicator(event) {
+		if (!isDOMElement(pslides.dropIndicator)) {
+			pslides.dropIndicator = document.createElement("p-dropindicator")
+		}
+		// resize the dropindicator by editing the style:
+		let elRect = event.target.getBoundingClientRect();
+		let style = window.getComputedStyle(event.target);
+		
+		let marginX = parseFloat(style.width) + parseFloat(style.marginLeft) + parseFloat(style.marginRight)
+		let marginY = parseFloat(style.height) - parseFloat(style.marginTop) - parseFloat(style.marginBottom)
+		if (["col","column"].includes(event.target.parentElement.getAttribute("layout"))) {
+			marginY = parseFloat(style.height) //+ parseFloat(style.marginTop) + parseFloat(style.marginBottom)
+		}
+		pslides.dropIndicator.style.height        = marginY+"px";
+		pslides.dropIndicator.style.maxHeight     = marginY+"px";
+		pslides.dropIndicator.style.width         = marginX+"px";
+		pslides.dropIndicator.style.maxWidth      = marginX+"px";
+		pslides.dropIndicator.style.borderRadius  = style.borderRadius;
+	}
+	shapeDropindicator(e);
+		
+	// element style:
+	let elRect   = e.target.getBoundingClientRect();
+	let elHeight = elRect.height //- elStyle.marginTop  - elStyle.marginBottom;
+	let elWidth  = elRect.width  //- elStyle.marginLeft - elStyle.marginRight;
+		
+	if (["IMG","SVG","CANVAS"].includes(e.target.tagName)) {
+		e.dataTransfer.setDragImage(e.target, elWidth/2, elHeight/2);
+	}
+	
+	e.dataTransfer.setData("text/html", e.target.innerHTML);
+	e.dataTransfer.setData("text/html", e.target.innerHTML);
+	e.target.setAttribute("dragging",""); // left-behind ghost
+	e.dataTransfer.effectAllowed = "move";
+	
+	setTimeout(function() {
+		e.target.style.display = "none"
+	}, 2)
+}
+
+
+function handleDragEnd(e) {
+	e.target.removeAttribute("dragging");
+	if (pslides.dropIndicator !== null && pslides.dropIndicator.parentNode) {
+		pslides.dropIndicator.parentNode.removeChild(pslides.dropIndicator);
+	}
+	e.target.style.display = "";
+}
+
+function handleDragOver(e) {
+	
+	// private function to get the coordinates of the element's center
+	function elementCenterCoor(node) {
+		let rect = node.getBoundingClientRect();
+		return {x: Math.round((rect.left+rect.right)/2), y: Math.round((rect.top+rect.bottom)/2)};
+	}
+	
+	// private function to compute the Euclidian distance
+	function coorDist(coor1, coor2) {
+		return Math.pow(coor1.x - coor2.x, 2) + Math.pow(coor1.y - coor2.y, 2);
+	}
+	
+	e.preventDefault();
+	e.dataTransfer.dropEffect = "move";
+
+	const container = e.currentTarget;
+	const draggedItem = document.querySelector('p-dragdrop>[dragging]');
+	const isHorizontal = !container.getAttribute("layout")!=="col";
+	const items = Array.from(container.querySelectorAll(':scope>:not([dragging])'));
+	
+	// if nothing is in the container:
+	if (items.length === 0) {
+		container.appendChild(pslides.dropIndicator);
+		return;
+	}
+		
+	const mouseX = e.clientX;
+	const mouseY = e.clientY;
+	const hoveredElement = document.elementFromPoint(mouseX, mouseY);
+		
+	maxdims = {left:Infinity, right:-Infinity, top:Infinity, bottom:-Infinity}
+	items.forEach(item => {
+		const rectIt = item.getBoundingClientRect();
+		maxdims.left    = Math.min(maxdims.left,   rectIt.left)
+		maxdims.top     = Math.min(maxdims.top,    rectIt.top)
+		maxdims.right   = Math.max(maxdims.right,  rectIt.right)
+		maxdims.bottom  = Math.max(maxdims.bottom, rectIt.bottom)
+	})
+	
+	// first, only determine if 
+	if (draggedItem === null) return;
+	if (hoveredElement === pslides.dropIndicator) return;
+	let targetItem = null;
+	
+	// Now we are within the dragdrop box.
+	// get target item:
+	if (draggedItem === hoveredElement) {
+		pslides.dropIndicator.remove();
+	} else if (( isHorizontal && mouseX < maxdims.left) || 
+		(!isHorizontal && mouseY < maxdims.top )) {
+		container.insertBefore(pslides.dropIndicator, items[0]);
+		// console.log("further from the beginning")
+	} else if (( isHorizontal && mouseX > maxdims.right) ||
+	           (!isHorizontal && mouseY > maxdims.bottom)) {
+		container.appendChild(pslides.dropIndicator);
+		// console.log("further from the end")
+	} else {
+		minDist = Infinity; 
+		items.forEach(item => {
+			const dist = coorDist(elementCenterCoor(item), 
+			                      {x:mouseX, y:mouseY});
+			if (dist < minDist) {
+				minDist = dist;
+				targetItem = item;
+			}
+		});
+		
+		// If the mouse is further than the last item: 
+		let lastRect = items[items.length - 1].getBoundingClientRect();
+		let edgeDist = coorDist({x: lastRect.right, y: (lastRect.top+lastRect.bottom)/2}, 
+		                        {x:mouseX, y:mouseY})
+		if (edgeDist < minDist) {
+			container.appendChild(pslides.dropIndicator);
+		} else {
+			container.insertBefore(pslides.dropIndicator, targetItem);
+		}
+	}
+}
+
+function handleDrop(e) {
+	e.preventDefault();
+	const hoveredElement = document.elementFromPoint(e.clientX, e.clientY);
+	const draggedItem = document.querySelector('p-dragdrop>[dragging]');
+	if (pslides.dropIndicator.style.display == "none" || 
+		hoveredElement === draggedItem) {
+		return;
+	}
+	
+	const container = e.currentTarget;
+	if (!draggedItem) return;
+	
+	const items = Array.from(container.querySelectorAll(':not([dragging])'));
+	if (items.length === 0 && draggedItem.parentElement === container) {
+		if (pslides.dropIndicator.parentNode) {
+			pslides.dropIndicator.parentNode.removeChild(pslides.dropIndicator);
+		}
+		return;
+	}
+	
+	let newItem = draggedItem;
+	if (draggedItem.parentElement !== container) {
+		newItem = document.createElement(draggedItem.tagName);
+		//newItem = draggedItem.cloneNode(true);
+		
+		// copy all attributes:
+		[...draggedItem.attributes].forEach(
+			attr => { newItem.setAttribute(attr.nodeName, attr.nodeValue) }
+		)
+		//newItem.className = `drag-item ${container.classList.contains('main-container') ? 'main-container' : 'bucket-container'} inserted`;
+		newItem.removeAttribute("dragging")
+		newItem.style.display = "";
+		newItem.setAttribute("inserted","")
+		newItem.innerHTML = draggedItem.innerHTML;
+		newItem.draggable = true;
+		newItem.addEventListener("dragstart", handleDragStart);
+		newItem.addEventListener("dragend", handleDragEnd);
+		draggedItem.remove();
+	}
+	
+	// Replace dropIndicator with newItem
+	if (pslides.dropIndicator.parentNode === container) {
+		container.replaceChild(newItem, pslides.dropIndicator);
+	} else {
+		container.appendChild(newItem);
+	}
+	
+	// Remove inserted class after animation
+	setTimeout(() => {
+		newItem.removeAttribute('inserted');
+	}, 30);
+}
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////
+//                Note listeners
+/////////////////////////////////////////////////////////////////
+	
+	// CSS match: function(node)
+	pslides.nodeListeners = {
+		"p-input": unpackPInput,
+		"p-upload,p-download": function (node) {
+			var empty = node.innerHTML.trim() === "";	
+			if (empty && node.tagName==="P-DOWNLOAD") {
+				node.innerHTML = "&nbsp;<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 29 32' height='2em' width='2em'>"+
+					"<g xmlns='http://www.w3.org/2000/svg' transform='matrix(-1 0 0 -1 30 32)'>"+
+					"<path data-name='Path 4' d='M28,14H23.98A1.979,1.979,0,0,0,22,15.98v.04A1.979,1.979,0,0,0,23.98,18H25a1,1,0,0,1,1,1v8a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.02A1.979,1.979,0,0,0,10,16.02v-.04A1.979,1.979,0,0,0,8.02,14H4a2,2,0,0,0-2,2V30a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V16A2,2,0,0,0,28,14Z' fill='#000000' fill-rule='evenodd' />"+
+					"<path data-name='Path 5' d='M11.413,9.387,14,6.754V23a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V7.057l.26.042L20.587,9.4a2.017,2.017,0,0,0,2.833,0,1.969,1.969,0,0,0,0-2.807L17.346.581a2.017,2.017,0,0,0-2.833,0l-5.934,6a1.97,1.97,0,0,0,0,2.806A2.016,2.016,0,0,0,11.413,9.387Z' fill='#000000' fill-rule='evenodd' />"+
+					"</g></svg>&nbsp;";
+			} else if (empty && node.tagName==="P-UPLOAD") {
+				node.innerHTML = "&nbsp;<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' height='2em' width='2em'>"+
+					"<path data-name='Path 4' d='M28,14H23.98A1.979,1.979,0,0,0,22,15.98v.04A1.979,1.979,0,0,0,23.98,18H25a1,1,0,0,1,1,1v8a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.02A1.979,1.979,0,0,0,10,16.02v-.04A1.979,1.979,0,0,0,8.02,14H4a2,2,0,0,0-2,2V30a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V16A2,2,0,0,0,28,14Z' fill='#000000' fill-rule='evenodd' />"+
+					"<path data-name='Path 5' d='M11.413,9.387,14,6.754V23a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V7.057l.26.042L20.587,9.4a2.017,2.017,0,0,0,2.833,0,1.969,1.969,0,0,0,0-2.807L17.346.581a2.017,2.017,0,0,0-2.833,0l-5.934,6a1.97,1.97,0,0,0,0,2.806A2.016,2.016,0,0,0,11.413,9.387Z' fill='#000000' fill-rule='evenodd' />"+
+					"</svg>&nbsp;";
+			}
+		},
+		"p-next,p-back,p-exit": unpackSlideNavigation,
+		"p-data[src]":unpackPData,
+		"[id]": function(node) {
+			// node = document.getElementById("button_template"); updateIdFill(node)
+			
+			const id = node.id;
+			if (isEmpty(id)) return;
+			// console.log("Evaluated idfills for id=\""+id+"\"");
+			const idfills = document.querySelectorAll("[idfill=\""+id+"\"]"),
+				  clone   = node.cloneNode(true);
+			
+			console.log("idfills: ", idfills);
+			// remove IDs from elements to prevent duplicate IDs:
+			clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+			// console.log("clone.innerHTML:", clone.innerHTML)
+			for (idfill of idfills) unpackIdFill(idfill); // idfill.innerHTML = clone.innerHTML;
+		},
+		"[idfill]": unpackIdFill,
+		"[order=shuffle]": handlePSet,
+		"[src]:not(p-data,audio,embed,iframe,img,input[type=image],script,source,track,video)": function(node) {
+			// if file:// protocol, introduce an iframe,
+			
+			// fetch text data and append the content to the node.
+			
+			// if in http:// or https:// protocol, load into the object;
+			// for p-data, use a template tag
+			
+			// after this, always check if the object has an id and if the idfill needs to be updated.
+		},
+		"p-dragdrop": function(node) {
+			let ch = node.children
+			node.addEventListener("dragover", handleDragOver);
+			node.addEventListener("drop", handleDrop);
+			node.addEventListener("dragenter", e => e.preventDefault());
+			for (var i=0; i<ch.length; i++) {
+				ch[i].addEventListener("dragstart", handleDragStart);
+				ch[i].addEventListener("dragend", handleDragEnd);
+			}
+		}
+	}
+	
+	pslides.mutationObserver = new MutationObserver((mutations, obs) => {
+		for (const mutation of mutations) {
+			// Only care about added nodes
+			if (mutation.addedNodes.length === 0) continue;
+			for (const node of mutation.addedNodes) {
+				
+				// skip text, comment, etc.:
+				if (!(node instanceof Element)) continue; 
+				
+				// Now check the node and execute function:
+				for (const [key, func] of Object.entries(pslides.nodeListeners)) {
+					if (node.matches(key)) {
+						// console.log("mutated node:\n", node)
+						func(node);
+					}
+				}
+				
+				// Also check any descendants of the added node
+				for (const [key, func] of Object.entries(pslides.nodeListeners)) {
+					const ds = node.querySelectorAll(key)
+					for (d of ds) {
+						if (node.matches(key)) {
+							// console.log("mutated descendant:\n", node)
+							func(d);
+						}
+					}
+				}
+			}
+		}
+	});
+
+///////////////////////////////////////////////// New mutationObserver above!
+
 
 function parse(str) {
 	var res = null;
@@ -374,29 +1121,32 @@ function rangeIndex(start=0, end) {
 	return(res)
 }
 
-function allIndices(x, val) {
-    var indices = [], i = -1;
-    while ((i = x.indexOf(val, i+1)) != -1){
-        indices.push(i);
-    }
-    return indices;
-}
-
-// an item will be removed from an array (once)
-function removeItemOnce(arr, value) {
-	var index = arr.indexOf(value);
-	if (index > -1) arr.splice(index, 1);
-	return arr;
-}
-
-function copy(obj) {
-	return(JSON.parse(JSON.stringify(obj)))
-}
 
 // Randomize array in-place using Durstenfeld shuffle algorithm
 function shuffleArray(x, groups=null) {
 	// var x = [1,2,13,4,15,6,7,8], groups = ["a","a","fixed","a","fixed","a","b","b"];
 	var k = Object.keys(x);
+	
+	function allIndices(x, val) {
+		var indices = [], i = -1;
+		while ((i = x.indexOf(val, i+1)) != -1){
+			indices.push(i);
+		}
+		return indices;
+	}
+	
+	
+	function copy(obj) {
+		return(JSON.parse(JSON.stringify(obj)))
+	}
+	
+	
+	// an item will be removed from an array (once)
+	function removeItemOnce(arr, value) {
+		var index = arr.indexOf(value);
+		if (index > -1) arr.splice(index, 1);
+		return arr;
+	}
 	
 	if (groups!==null && groups.length===x.length) {
 		var gi = allIndices(groups, "fixed")
@@ -411,6 +1161,7 @@ function shuffleArray(x, groups=null) {
 	for (var i=0;i<k.length;i++) res[k[i]] = x[kr[i]];
 	return res;
 }
+
 
 function shuffleSeq(node) { // Fisher–Yates shuffle	
 	var ch = node.querySelectorAll(":scope > :not([group='fixed'])")
@@ -429,6 +1180,15 @@ function shuffleSeq(node) { // Fisher–Yates shuffle
 			past_swaps.push(String(unfixed[i])+" "+String(unfixed_shuffled[i]));
 		}
 		ch = node.querySelectorAll(":scope > :not([group='fixed'])");
+	}
+}
+
+pslides.shuffle = function(x, groups=null) {
+	if (isDOMElement(x)) {
+		shuffleSeq(x);
+		return x.children;
+	} else if (Array.isArray(x)) {
+		return shuffleArray(x, groups=groups)
 	}
 }
 
@@ -602,7 +1362,7 @@ pslides.evalOrderRule = function(array, rules=[], iterator=0) {
 }
 
 
-// !!!!!!!!!!!!!!!!!!!!!!!! Bugs !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!!!!!!!!!!!!!!!!!!!!!!! Bugs?? !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 pslides.pseudoShuffleArray = function(x, rules=[]) {
 	// x=items; rules = [new pslides.orderRule(obj={type:'A'}, within=3, atmost=1)]
 	// first shuffle.
@@ -648,13 +1408,16 @@ pslides.pseudoShuffleArray(items, [new pslides.orderRule(obj={type:'A'}, within=
 function handlePSet(node) {
 	// node = document.getElementById("experiment")
 	var order = ifNullStr(node.getAttribute("order"));
-	var n = ifNullStr(node.getAttribute("n")); //, preshuffle = true;
+	var n = Number(ifNullStr(node.getAttribute("n"))); //, preshuffle = true;
 	if (order==="shuffle") {
 		shuffleSeq(node)
 	} else if (order.substring(0,13)==="pseudoshuffle") {
 		var tol = tryEval(order.substring(order.indexOf("(")+1,order.lastIndexOf(")")), at=node);
 		pseudoShuffleSeq(node, tol)
 	}
+	
+	if (isNaN(n) || n==0) return;
+	while (node.children.length > n) node.children[n].remove();
 	
 	// insert the n. !!!!!!!!!!!!!
 }
@@ -799,7 +1562,8 @@ async function handlePData() {
 		var src    = d[i].getAttribute("src"),
 			onld   = d[i].getAttribute("onload"),
 			key    = ifNullStr(d[i].getAttribute("id")),
-			format = getFormatAttribute(d[i])[0];
+			format = getFormatAttribute(d[i])[0],
+			sep    = d[i].getAttribute("sep");
 		
 		if (src !== null && src.trim() !== "") {
 			console.log("Fetching data for "+stringifyNodeTag(d[i])+" …")
@@ -808,6 +1572,7 @@ async function handlePData() {
 			var str = d[i].textContent.trim(); // previously used innerHTML!
 		}
 		
+		// determine the format of the src
 		if (format==="" && src !== null && src.lastIndexOf("/") < src.lastIndexOf("\.") && 
 			src.lastIndexOf("\.")+1 !== src.lengh) {
 			format = src.substring(src.lastIndexOf("\.")+1, src.lengh)
@@ -818,12 +1583,15 @@ async function handlePData() {
 			if (format === "tsv") {
 				pslides.data[key] = CSVToArray(str, "\t");
 			} else if (format === "csv") {
-				pslides.data[key] = CSVToArray(str, ",");
+				if (isEmpty(sep)) sep = ",";
+				pslides.data[key] = CSVToArray(str, sep);
 			}
 			var header = pslides.data[key][0], pjson = [], temp = {};
 			pslides.data[key].shift();
 			for (var row=0;row<pslides.data[key].length;row++) {
-				for (col=0;col<pslides.data[key][row].length;col++) temp[header[col]] = pslides.data[key][row][col];
+				for (col=0;col<pslides.data[key][row].length;col++) {
+					temp[header[col]] = pslides.data[key][row][col];
+				}
 				pjson.push(temp); temp = {};
 			}
 			pslides.data[key] = pjson;
@@ -1021,7 +1789,7 @@ function setMetaElement(name, content=null) {
 	let meta = document.head.querySelector("meta[name=\"pslides:"+escapeString(name)+"\"]"),
 		URLParams = new URLSearchParams(window.location.search);
 	// URL parameter takes precedence over provided content:
-	if (![null,""].includes(URLParams.get(name))) content = URLParams.get(name);
+	if (!isEmpty(URLParams.get(name))) content = URLParams.get(name);
 	if (meta === null) {
 		meta = document.createElement("meta");
 		meta.setAttribute("name", "pslides:"+escapeString(name));
@@ -1074,10 +1842,15 @@ function extractParameter(names=[]) {
 				// if agenda is represented in the URL and in the meta tags.
 				res["agenda"] = extractMetaContent(name="agenda") +
 				                " " + params.get("agenda")
+			} else if (names[i] === "lang") {
+				res["lang"] = pslides.printLanguage();
 			} else {
 				res[names[i]] = params.get(names[i]);
 				if (res[names[i]] === null) {
 					res[names[i]] = extractMetaContent(name=names[i]);
+				}
+				if (res[names[i]] === null) {
+					res[names[i]] = localStorage.getItem(names[i]);
 				}
 			}
 		}
@@ -1087,14 +1860,18 @@ function extractParameter(names=[]) {
 	} else { // not HTTP protocol
 		for (var i=0; i<names.length; i++) {
 			res[names[i]] = params.get(names[i]);
-			if (res[names[i]] === null) {
+			if (isEmpty(res[names[i]])) {
 				res[names[i]] = extractMetaContent(name=names[i]);
+			}
+			if (isEmpty(res[names[i]])) { // get local storage:
+				res[names[i]] = localStorage.getItem(names[i]);
 			}
 		}
 	}
 	
-	// subj: Just in case it has been altered:
-	if (res["subj"] === "" && extractMetaContent(name="subj") !== "") {
+	// subj: depends more on meta content: in lognitudinal studies,
+	// we want to put presidence on subject input
+	if (extractMetaContent(name="subj") === document.querySelector("p-input[type=subj] input[type=text]")?.value) {
 		res["subj"] = extractMetaContent(name="subj");
 	}
 	
@@ -1151,92 +1928,189 @@ function encodeURIArg(val="",name) {
 	return res;
 }
 
+pslides.printMessage = function(token, lang=null) {
+	
+	// pslides.printMessage("RequestNotSent")
+	// token="RequestNotSent"; lang="fr-FR";
+	
+	// Check if the message token even exists:
+	if (!(token in pslides.messageTexts)) {
+		throw new Error("The token does not correspond to an existing message. Check out \"pslides.messageTexts\".");
+	}
+	
+	// define array of possible combinations:
+	let langs = [];
+	
+	// Check if language is:
+	if (isEmpty(lang)) {
+		langs = [pslides.language.lang]
+		if (!isEmpty(pslides.language.script)) langs.push(langs[0]+"-"+pslides.language.script);
+		if (!isEmpty(pslides.language.region)) langs.push(langs[0]+"-"+pslides.language.region);
+		if (!isEmpty(pslides.language.script) && !isEmpty(pslides.language.region)) {
+			langs.push(langs[0]+"-"+pslides.language.script+"-"+pslides.language.region);
+		}
+	} else {
+		langs = lang.split("-");
+		if (langs.length>1) langs[1] = langs[0] + "-" + langs[1];
+		if (langs.length>2) {
+			langs[2] = langs[0] + "-" + langs[1];
+			langs[3] = langs[0] + "-" + langs[1] + "-" + langs[2];
+		}
+		langs = langs.splice(0,4);
+	}
+	
+	// console.log("langs:", langs);
+	
+	// Try to query messageTexts with different BCP 47 language strings:
+	for (var i=langs.length-1; i>=0; i--) {
+		if (langs[i] in pslides.messageTexts[token]) {
+			return pslides.messageTexts[token][langs[i]];
+		}
+	}
+	
+	// Last resort: 
+	if ("en" in pslides.messageTexts[token]) {
+		console.warn("The lagnuage \""+langs[langs.length-1]+
+			"\" is not supported in \"pslides.messageTexts."+token+"\". "+
+			"Also, please remember that the language must be provided as a BCP 47 language tag.");
+		return pslides.messageTexts[token]["en"];
+	}
+}
+
 function messagingHTTPRequest(request, id=null, method="POST") {
+	// console.log(request);
 	var type   = "warn",
-		mes    = "No message.",
 		method = method.toLowerCase(),
+		// lang   = pslides.printLanguage(),
+		mes    = "No message.",
 		state  = request.readyState;
 	if (state==0) {
-		mes = "Request not sent.";
+		//mes = pslides.messageTexts.RequestNotSent[lang];
+		mes = pslides.printMessage("RequestNotSent")
 	} else if (state==1) {
-		mes = "Preparing request …";
+		// mes = pslides.messageTexts.PreparingRequest[lang]; // "Preparing request …";
+		mes = pslides.printMessage("PreparingRequest")
 	} else if (state==2) {
-		mes = "Waiting for server to respond …";
+		// mes = pslides.messageTexts.WaitingForServer[lang]; // "Waiting for server to respond …";
+		mes = pslides.printMessage("WaitingForServer")
 	} else if (state==3 && method==="get") {
-		mes = "Downloading data …";
+		// mes = pslides.messageTexts.DownloadingData[lang]; // "Downloading data …";
+		mes = pslides.printMessage("DownloadingData")
 	} else if (state==3 && ["post","patch","put"].includes(method)) {
-		mes = "Uploading data …";
+		// mes = pslides.messageTexts.UploadingData[lang]; //  "Uploading data …";
+		mes = pslides.printMessage("UploadingData")
 	} else if (state==3) {
-		mes = "Server is processing the data …";
+		// mes = pslides.messageTexts.ServerProcessingDate[lang]; // "Server is processing the data …";
+		mes = pslides.printMessage("ServerProcessingDate")
 	} else if (state==4) {
-		mes = "<b>Status "+request.status+": "+request.statusText+"</b><br/>"+
-		      request.response.replaceAll("\n","<br/>"); type="neutral"; 
+		let body = request.response.trim(),
+			contentType = request.getResponseHeader("Content-Type");
+		console.log("Response body: ", body);
+		if ((!isEmpty(contentType) && contentType.trim().match(/^text\/html/gi)!==null) || 
+			body.match(/^<\!doctype html/gi)) {
+			const parser = new DOMParser();
+			body = parser.parseFromString(body, 'text/html').body?.innerHTML; // inner content
+			body = body.replaceAll(/(<(br|BR|Br|bR|br\/|BR\/|Br\/|bR\/)>)+/g, "<br/>");
+			body = body.replaceAll("\n"," ")
+		} else {
+			body = body.replaceAll(/\n+/g,"<br/>")
+		}
+		
+		mes  = "<b>"+pslides.printMessage("Status")+" "+
+		       request.status+": "+request.statusText+"</b><br/>";
+		type = "neutral"; 
 		if (request.status > 199 && request.status < 300) {
 			type="neutral";
 			mes = "&#x2705; "+mes;
 		} else {
 			type="error"
-			mes = "&#x274C; "+mes;
+			mes = "&#x274C; "+mes+"<br/>POST URI: <u>"+request.responseURL+"</u><br/>";
 		}
+		mes += body;
 	}
-	if (mes.length > 500 && type==="neutral") mes = mes.substring(0, 500)+" …"
+	console.log("mes for state "+state+": ", mes)
+	if (mes.length > 700 && type==="neutral") mes = mes.substring(0, 700)+" …";
 	//console.log("request: ",request);
 	displayMessage(message=mes, id=id, type=type);
 }
 
 
-function sendOutData(element=null, data=null, format="json") {
+function sendOutData(element=null, data=null, format="csv", onload=null) {
+	//console.log("data: ", data)
+	//console.log("format: ", format)
+	//console.log("onload: ", onload)
+	if (isEmpty(format)) format = "csv";
 	format = format.trim().toLowerCase();
-	let isDOM = isDOMElement(element);
+	let isDOM = isDOMElement(element), xhr = null;
 	if (data===null && isDOM && ![undefined,null,""].includes(element.getAttribute("js"))) {
 		data = tryEval(element.getAttribute("js"), at=element, ifError=function(){return outObj;});
 	}
+	// is data is still empty, make it the outObj:
+	if (isEmpty(data)) {
+		data=outObj;
+	}
 	
-	if ([undefined,null,""].includes(data)) data=outObj;
 	var loc = window.location.protocol,
 		message_id = null;
-		isFirstSlide = document.querySelector("p-slide[current]") === document.querySelectorAll("p-slide")[0];
+		isFirstSlide = document.querySelector("p-slide[current]") === document.querySelector("p-slide") &&
+		               document.querySelectorAll("p-slide").length>2;
 	if (isDOM) {
 		message_id = element.id;
 		if (![null,""].includes(element.getAttribute("format"))) {
 			format = element.getAttribute("format");
 		}
 	}
+	
 	if (["http:","https:"].includes(loc) && !isFirstSlide) {
-		var params = extractParameter(["root","prj","subj","session","cond","srcprj","srcfn","srcroot"]),
-			urlArray = [];
-		params.format = format;
-		if (format === "csv") {
-			datastr = outObj2CSV(data);
-		} else {
-			datastr = stringify(data);
+		try {
+			var params = extractParameter(["lang","root","prj","subj","session","cond","srcprj","srcfn","srcroot"]),
+				urlArray = [];
+			params.format = format;
+			let contentType = "text/"+format;
+			if (format === "csv") {
+				datastr = outObj2CSV(data);
+			} else {
+				datastr = stringify(data);
+				contentType = "application/json";
+			}
+			if (format==="txt") contentType = "text/plain";
+			
+			for (const [key, value] of Object.entries(params)) {
+				if (value !== "") urlArray.push(encodeURIArg(value, key));
+			}
+			xhr = new XMLHttpRequest();
+			var url = window.location.origin+"/"+pslides.serverSubjPath+"save_subj_data.php?"+
+					  urlArray.filter((x) => ifNullStr(x) !== "").join("&");
+			// window.location.search = "?"+;
+			console.log("request URL:\n",url);
+			xhr.open("POST", url); // 'save_subj_data.php' is the path to the php file described above.
+			xhr.onreadystatechange = function() {messagingHTTPRequest(this, message_id, method="post")};
+			xhr.onload = function() {
+				messagingHTTPRequest(this, message_id, method="post");
+				if (typeof onload === "function") onload();
+			};
+			xhr.setRequestHeader("Content-Type", contentType+"; charset=utf-8");
+			xhr.setRequestHeader("Accept-Language", document.documentElement.lang);
+			// xhr.setRequestHeader("X-PSlides-Meta", stringify(outObj.meta));
+			
+			// Send the data when enough time past from the previous data submission:
+			let sendTime = Number(new Date());
+			if (sendTime - pslides.lastSubmission > 2000) {
+				pslides.lastSubmission = sendTime;
+				xhr.send(datastr);
+			}
+		} catch (error) {
+			displayMessage(pslides.printMessage("sendDataError")+"\n"+error,
+						   id=message_id, type="error")
 		}
-		
-		for (const [key, value] of Object.entries(params)) {
-			if (value !== "") urlArray.push(encodeURIArg(value, key));
-		}
-		var xhr = new XMLHttpRequest();
-		var url = window.location.origin+"/"+pslides.serverSubjPath+"save_subj_data.php?"+
-		          urlArray.filter((x) => ifNullStr(x) !== "").join("&");
-		// window.location.search = "?"+;
-		console.log("request URL:\n",url);
-		xhr.onreadystatechange = function() {messagingHTTPRequest(xhr, message_id, method="post")};
-		xhr.onload = function() {messagingHTTPRequest(xhr, message_id, method="post")};
-		xhr.open("POST", url); // 'save_subj_data.php' is the path to the php file described above.
-		xhr.setRequestHeader("Content-Type","application/json");
-		xhr.send(datastr);
 	} else if (loc === "file:") {
-		displayMessage("You cannot send data when you are browsing local files\n"+
-		               "The URL starts with \""+loc+"//…\" and does not follow the HTTP protocol\n"+
-					   "(starting with \"http://…\" or \"https://…\").", 
-					   id=message_id, type="error")
+		displayMessage(pslides.printMessage("sendDataLocalToExternal"), id=message_id, type="error")
 	} else if (isFirstSlide) {
-		displayMessage("You cannot send data on the first slide of the page.",
-					   id=message_id,type="error")
+		displayMessage(pslides.printMessage("sendDataOnFirstSlide"), id=message_id, type="error")
 	} else {
-		displayMessage("An unknown error has occured when trying to upload the file.",
-					   id=message_id,type="error")
+		displayMessage(pslides.printMessage("sendDataUnknownError"), id=message_id, type="error")
 	}
+	return xhr;
 }
 
 
@@ -1320,12 +2194,16 @@ function evalJSAttr(node) {
 pslides.download = function(node, obj=null, filename=null) {
 	try {
 		downloadObj(node, obj, filename)
-		displayMessage(message="&#9989; <b>Download successful</b>:\nYou can find the downloaded file in your \"Downloads\" folder.", id=node.id, type="log")
+		displayMessage(message="&#9989; <b>"+pslides.printMessage("DownloadSuccessful")+"</b>:\n"+
+			pslides.printMessage("FindDownload"), id=node.id, type="log")
 	} catch(e) {
 		displayMessage(message="&#10060; "+String(e), id=node.id, type="error")
 	}
 }
 
+
+// MOVE TO MUTATION OBSERVER
+/*
 function handleOnclicks(node=document) {
 	var d = node.querySelectorAll("p-download,p-upload"), empty = true, js = null,
 		downloadSVG = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' height='2em' width='2em'>"+
@@ -1350,6 +2228,10 @@ function handleOnclicks(node=document) {
 		}
 	}
 }
+*/
+
+
+
 
 function updateURIParameters(url, params) {
     let urlObj = new URL(url, window.location.origin); // Ensure valid URL
@@ -1413,10 +2295,10 @@ function createRedirectURI(href=null) {
 }
 
 function createSubjCodes() {
-	var code = extractParameter(["subj","session","cond"]);
+	var pars = extractParameter(["subj","session","cond"]);
 	
 	// Subject Code
-	var subj = code.subj, d = setMetaElement("subj")
+	var subj = pars.subj, d = setMetaElement("subj")
 	if (subj === "") subj = d.getAttribute("content");
 	if ([null,undefined,""].includes(subj)) {
 		var n      = ifNullStr(d.getAttribute("n"),"3"), 
@@ -1431,11 +2313,11 @@ function createSubjCodes() {
 	}
 	setMetaElement("subj", subj)
 	outObj.meta.origSubjCode = subj
-		
+	
 	// Session code: if not in a URL parameter, just generate it.
-	if (code.session === "") code.session = generateUTCCode();
-	setMetaElement("session", code.session);
-	//outObj.meta.session = code.session;
+	if (pars.session === "") pars.session = generateUTCCode();
+	setMetaElement("session", pars.session);
+	//outObj.meta.session = pars.session;
 }
 
 async function requestStartSession() {
@@ -1700,48 +2582,9 @@ function findPreviousSlide(current) {
 	return candidate;
 }
 
-function handleRedirect(node) {
-	if (!isDOMElement(node) || node.tagName !== "P-REDIRECT") return;
-	
-	if (node.getAttribute("send") !== null) {
-		sendOutData(element=node);
-	}
-	
-	// update subject code!
-	let redir = createRedirectURI(node.getAttribute("href")); // updateURIParameters(node.getAttribute("href"), extractParameter("subj"))
-	
-	var a = document.createElement("a");
-	a.setAttribute("href", redir);
-	document.body.appendChild(a);
-	a.click();
-	a.remove();
-}
-
 /*
 p-records : at the beginning of every new slide: store in HTML document.
-
-
 */
-
-// fill up idfill
-function handleFillid() {
-	var d = document.querySelector("[idfill]:not([p_idfill_attempted='true'])"),
-		idfill = null;
-	while (d !== null) { // we recursively fill the elements with idfill
-		idfill = d.getAttribute("idfill")
-		if (idfill !== null && idfill !== "") {
-			var filler = document.getElementById(idfill)
-			if (filler !== null) d.innerHTML = filler.innerHTML;
-		}
-		d.setAttribute("p_idfill_attempted","true")
-		d = document.querySelector("[idfill]:not([p_idfill_attempted='true'])");
-	}
-}
-
-
-
-
-
 
 
 
@@ -1807,6 +2650,40 @@ window.onkeyup = (event) => {
 }
 
 
+pslides.getKeys = function(slidesback=-1) {
+	if (outObj.slides.length<2 && slidesback<0) return [];
+	if (slidesback == 0) return pslides.key.down.k;
+	if (slidesback > 0) slidesback = -slidesback;
+	if (slidesback < -outObj.slides.length+1) {
+		throw new Error("Argument \"slidesback\" in pslides.getKeys() "+
+		                "goes back further than the number of slides looked at.");
+	}
+	try {
+		return outObj.slides[outObj.slides.length-1+slidesback].key.down.k;
+	} catch {
+		return [];
+	};
+}
+
+pslides.matchKeys = function(code="", slidesback=-1) {
+	if (slidesback > 0) slidesback = -slidesback;
+	let keys = pslides.getKeys(slidesback); // 
+	if (keys.length==0 && isEmpty(code)) return [true];
+	if (keys.length==0) return [false];
+	
+	res = new Array(keys.length).fill(false);
+	if (Array.isArray(code)) { // if code is an array, check if each last key is any of the codes
+		for (var i=0; i<keys.length; i++) {
+			if (code.includes(keys[i])) res[i] = true;
+		}
+	} else {
+		for (var i=0; i<keys.length; i++) {
+			if (code == keys[i]) res[i] = true;
+		}
+	}
+	return res;
+}
+
 function stringifyTargetElement(target) {
 	var el = target.tagName.toLowerCase();
 	if (target.id!=="") { // id
@@ -1823,6 +2700,17 @@ function stringifyTargetElement(target) {
 	return el;
 }
 
+function handleSendAttribute(node, onload=null) {
+	if (!isDOMElement(node) ||
+		(!["P-EXIT", "P-REDIRECT"].includes(node.tagName) &&
+		 [null,"false","0"].includes(node.getAttribute("send"))) ) {
+		return null;
+	}
+	var obj = null, js = node.getAttribute("js"),
+		format = node.getAttribute("format");
+	if (!isEmpty(js)) obj = tryEval(js, at=node);
+	return sendOutData(element=node, data=obj, format=format, onload=onload);
+}
 
 
 function pointerUpHandleButtons(target) {
@@ -1834,10 +2722,7 @@ function pointerUpHandleButtons(target) {
 			return;
 		}
 		
-		if (target.getAttribute("send") !== null) {
-			var obj = null, js = target.getAttribute("js");
-			sendOutData(element=target, data=obj);
-		}
+		handleSendAttribute(target);
 		
 		if (![null,""].includes(to)) {
 			if (isNaN(Number(to))) {
@@ -1850,21 +2735,50 @@ function pointerUpHandleButtons(target) {
 		} else if (!disabled && target.tagName==="P-BACK") {
 			changeSlide(-1)
 		} else {
-			console.error("Slide cannot be changed on pointer event here: "+stringifyNodeTag(target));
+			console.error("Slide cannot be changed on pointer event here:\n"+stringifyNodeTag(target));
 		}
 	} else if (target.tagName==="P-REDIRECT") {
-		handleRedirect(target);
+		// insert 
+		if (!isDOMElement(target) || target.tagName !== "P-REDIRECT") return;
+		
+		// remove event listener for beforeunload:
+		window.removeEventListener("beforeunload", pslides.beforeunload);
+		
+		handleSendAttribute(target, onload = () => {
+			// update subject code!
+			// console.log("target:", target);
+			let href = target.getAttribute("href");
+			let redir = createRedirectURI(href);
+			var a = document.createElement("a");
+			a.setAttribute("href", redir);
+			document.body.appendChild(a);
+			a.click();
+			a.remove();
+		});
 	} else if (target.tagName==="P-UPLOAD") {
 		sendOutData(element=target);
 	} else if (target.tagName==="P-DOWNLOAD") {
 		pslides.download(target)
 	} else if (target.tagName==="P-EXIT") {
-		var href = target.getAttribute("href");
-		var params = extractParameter(["root","prj","subj"]);
-		if ([null,undefined,""].includes(href) || href.trim() === "") {
-			href = window.location.origin+pslides.serverRootPath+"/"+params.root+"/"+params.prj+"/app/?subj="+params.subj;
-		}
-		window.location.href = href;
+		
+		// upload data:
+		handleSendAttribute(target, onload = () => {
+			var href = target.getAttribute("href");
+			var params = extractParameter(["root","prj","subj"]);
+			
+			// remove event listener for beforeunload:
+			window.removeEventListener("beforeunload", pslides.beforeunload);
+			
+			if ([null,undefined,""].includes(href) || href.trim() === "") {
+				href = window.location.origin+pslides.serverRootPath+"/"+
+				       params.root+"/"+params.prj+"/app/?subj="+params.subj;
+			}
+			
+			// remove information from local storage:
+			localStorage.removeItem("session");
+			
+			window.location.href = href;
+		});
 	}
 }
 
@@ -1910,120 +2824,6 @@ function stringifyHTMLAttribute(name, value="") {
 pslides.changeSubjCode = function(node) {
 	return node.value;
 }
-
-function unpackPInput(node) {
-	console.log("unpackPInput() called.")
-	/*
-		rendered on document load.
-		
-		// subj:
-		<p-input type="subj" name="subject-code"></p-input>
-		
-		// Radio:
-		<p-input type="radio" name="question_name" js=""><label for="ID"></label>...</p-input>
-		
-		// Likert scale:
-		<p-input type="likert" name="" options="" n=""></p-input> // js are the labels, overwrites steps
-		
-		// Checkbox:
-		<p-input type="checkbox" for="" name=""></p-input>
-		// also multiple check
-		                     Î
-		<label></label>     /|\ --> label (each row)
-		<p-mold spots="1"> //|\\ anything in a mold could be picked up.
-	*/
-	if (!isDOMElement(node)) return; // node.querySelector("input")!==null
-		
-	let arr = [], newId = "", inner="",
-		name    = escapeString(ifNullStr(node.getAttribute("name"))), 
-		pid     = node.getAttribute("for"), // for attribute
-		type    = ifNullStr(node.getAttribute("type")).trim().toLowerCase(),
-		forStr  = stringifyHTMLAttribute("for", pid),
-		nameStr = stringifyHTMLAttribute("name", name),
-		idStr   = stringifyHTMLAttribute("id", pid);
-	
-	console.log("type === \""+type+"\"")
-	console.warn("name", name)
-	console.warn("nameStr", nameStr)
-	
-	if (type==="checkbox" && node.querySelector("label")===null) {
-		node.innerHTML = "<label"+forStr+nameStr+">"+
-							"<input type=\"checkbox\""+nameStr+idStr+"/><span>"+node.innerHTML+"</span>"+
-						 "</label>";
-	} else if (type==="checkbox") {
-		arr = node.querySelectorAll("label");
-		for (var i=0;i<arr.length;i++) {
-			pid  = arr[i].getAttribute("for");
-			if ([undefined,null,""].includes(pid)) pid = name+":"+i;
-			arr[i].innerHTML = "<input type='checkbox'"+nameStr+stringifyHTMLAttribute("id", pid)+"/>"+
-							   "<span>"+arr[i].innerHTML+"</span>"
-		}
-	} else if (type==="radio") {
-		arr = node.querySelectorAll("label"); //////////////////////////// What if someone forgot to set an ID?
-		for (var i=0;i<arr.length;i++) {
-			arr[i].setAttribute("name", name);
-			pid = arr[i].getAttribute("for")
-			if ([undefined,null,""].includes(pid)) {
-				pid = name+":"+arr[i].innerText
-					  .replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
-					  .trim().replaceAll(/[\s\n\r\t]+/g, "_");
-			}
-			arr[i].innerHTML = "<input type='radio'"+nameStr+stringifyHTMLAttribute("id", pid)+"/>"+
-							   "<span>"+arr[i].innerHTML+"</span>"
-		}
-	} else if (type==="likert" && node.querySelector("label") === null) {
-		// label
-		
-		var options = node.getAttribute("options")
-		if ([undefined,null,""].includes(options)) {
-			var n = Number(node.getAttribute("n"));
-			if (!isNaN(Number(n)) && n > 0) {
-				options = rangeIndex(1, n)
-			}
-		} else if (options.indexOf(";")>-1) {
-			options = options.split(";")
-		} else {
-			options = splitWhitespace(options, ignoreQuotes=true);
-			//console.log("options: ", options)
-		}
-		
-		for (var i=0; i<options.length; i++) {
-			newId = name+":"+escapeString(options[i])
-			        .replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
-					.trim().replaceAll(/[\s\n\r\t]+/g, "_");
-			inner += "<label for=\""+newId+"\">"+
-						 "<input type='radio' id=\""+newId+"\""+nameStr+"/>"+
-						 "<span>"+options[i]+"</span>"+
-					 "</label>"
-		}
-		node.innerHTML = inner;
-	} else if (type === "subj") {
-		//node.setAttribute("contenteditable","true")
-		let label = node.querySelector("label")
-		if (label===null) { 
-			label = document.createElement("label");
-			if (![undefined, null, ""].includes(pid)) label.setAttribute("for", pid);
-			label.innerHTML = node.innerHTML
-			node.appendChild(label);
-		}
-		if (label.getAttribute("for")!==null) label.setAttribute("for",pid);
-		idStr = stringifyHTMLAttribute("id", label.getAttribute("for"))
-		//console.log("idStr: ", idStr)
-		label.innerHTML = label.innerHTML+"<input type=\"text\""+idStr+"/>"
-		label.addEventListener("keyup", (event) => {
-			let textInput = event.target.value
-			                     .toUpperCase().replace(/[^A-Z0-9]/g, "-").replace(/[-]{2,}/g, "-");
-			let textInputSplit = textInput.split("-");
-			textInput = textInputSplit.slice(0,-1).concat(textInputSplit.slice(-1)[0].match(/.{1,3}/g)).join("-")
-			event.target.value = textInput;
-			if (textInput.split("-").length<3) { // change back to original subj code.
-				textInput = outObj.meta.origSubjCode;
-			}
-			setMetaElement(name="subj", content=textInput)
-		}, false);
-	}
-}
-
 
 
 // Event handler for pointer events
@@ -2187,33 +2987,49 @@ document.addEventListener("pointercancel", (event) => {
 	// then, check if a key was pressed that changes to the next slide:
 })
 
+pslides.beforeunload = function(event) {
+	// Final save using Beacon (guaranteed delivery)
+	event.preventDefault();
+	
+	handleSendAttribute(document.documentElement);
+		
+	// Show native browser confirmation if there are unsaved changes
+	// Standard message (browsers ignore custom text for security)
+	const message = pslides.printMessage("BeforeClosingWindow");
+	event.returnValue = message; // for legacy browsers
+	return message;          // for modern browsers
+}
+
+window.addEventListener("beforeunload", pslides.beforeunload)
+
 window.onload = function() {
 	// fill in external data
 	// src="nct_stimuli_pdata.csv"; addTextFromUrl(checkURL(src), document.querySelectorAll("p-data")[0].innerHTML)
 	
 	// load experiment information: start_session.php
 	createSubjCodes();
+	pslides.setLanguage();
 	
-	handlePData();
+	//handlePData();
 	
 	//handleDataid();
-	handleOnclicks();
+	//handleOnclicks();
 	// sample <p-set>
 	
-	handleFillid();
+	//handleFillid();
 	
 	// initialize the array for querySelectorAll()
 	var d = [];
 	
-	d = document.querySelectorAll("p-input");
-	for (var i=0; i<d.length; i++) unpackPInput(d[i]);
+	//d = document.querySelectorAll("p-input");
+	//for (var i=0; i<d.length; i++) unpackPInput(d[i]);
 	
 	//var d = document.querySelectorAll("[jsattr][jsfill]");
 	//for (var i=0; i<d.length; i++) evalJSAttr(d[i]);
 	
 	// shuffle all children in <p-set> tags
-	d = document.querySelectorAll("p-set");
-	for (var i=0; i<d.length; i++) handlePSet(d[i]);
+	// d = document.querySelectorAll("p-set");
+	// for (var i=0; i<d.length; i++) handlePSet(d[i]);
 	
 	// select tag: create a default value!
 	d = document.querySelectorAll("select");
@@ -2227,41 +3043,6 @@ window.onload = function() {
 	lastSlide.innerHTML = "<p-center><p>Exit website:</p><p-exit>Exit</p-exit></p-center>"
 	document.body.appendChild(lastSlide);
 		
-	// add to every slide a button.
-	d = document.querySelectorAll("p-next,p-back,p-exit"); // ,p-redirect
-	for (var i=0; i < d.length; i++) {
-		var empty = d[i].innerHTML.trim() === "" && d[i].className=="", 
-			url   = window.location.origin+window.location.pathname,
-			urlq  = window.location.search,
-			moreclick = d[i].getAttribute("onclick")+";";
-		if (d[i].getAttribute("href") !== null) {
-			var urls = splitWhitespace(d[i].getAttribute("href"))
-			url = urls[Math.floor(Math.random() * urls.length)]
-			url = url + urlq.replace("?","&");
-		}
-		
-		/*
-		var send = d[i].getAttribute("send");
-		if (send !== null && send.trim() === "") {
-			moreclick += "sendOutData(element=this);";
-		} else if (send !== null && send.trim() !== "") {
-			var format = "";
-			if (![null,""].includes(d[i].getAttribute("format"))) {
-				format = ","+d[i].getAttribute("format");
-			}
-			moreclick += "sendOutData("+send+",element=this"+format+");";
-		}*/
-		if (d[i].tagName === "P-NEXT")  {
-			if (empty) d[i].innerHTML = "&gt;&gt;&gt;";
-		} else if (d[i].tagName === "P-BACK") {
-			if (empty) d[i].innerHTML = "&lt;&lt;&lt;";
-		} else if (d[i].tagName === "P-EXIT") {
-			if (empty) d[i].innerHTML = "&nbsp;&nbsp;x&nbsp;&nbsp;";
-			//d[i].setAttribute("onclick", moreclick+"window.location.href=\""+url+"\";")
-		} else if (d[i].tagName === "P-REDIRECT") {
-			if (empty) d[i].innerHTML = "<svg height='35px' width='35px' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg' fill='none'><path fill='black' fill-rule='evenodd' d='M8 3.517a1 1 0 011.62-.784l5.348 4.233a1 1 0 010 1.568l-5.347 4.233A1 1 0 018 11.983v-1.545c-.76-.043-1.484.003-2.254.218-.994.279-2.118.857-3.506 1.99a.993.993 0 01-1.129.096.962.962 0 01-.445-1.099c.415-1.5 1.425-3.141 2.808-4.412C4.69 6.114 6.244 5.241 8 5.042V3.517zm1.5 1.034v1.2a.75.75 0 01-.75.75c-1.586 0-3.066.738-4.261 1.835a8.996 8.996 0 00-1.635 2.014c.878-.552 1.695-.916 2.488-1.138 1.247-.35 2.377-.33 3.49-.207a.75.75 0 01.668.745v1.2l4.042-3.2L9.5 4.55z' clip-rule='evenodd'/></svg>"
-		}
-	}
 	
 	pslides.currentSlide = findNextSlide(document.body);
 	pushSlide();
@@ -2269,8 +3050,25 @@ window.onload = function() {
 	pslides.currentSlide.setAttribute("current", "");              // mark first slide
 	prepareSlide(pslides.currentSlide)
 	
-	console.log("Window loaded.")
+	// idfill
+	var idfills = document.querySelectorAll("[idfill]")
+	for (var i=0; i<idfills.length; i++) unpackIdFill(idfills[i]);
+	
+	// lastSubmission time:
+	pslides.lastSubmission = Number(new Date());
+	
+	console.log("PSlides loaded.")
 }
+
+
+// Start observing mutations:
+pslides.mutationObserver.observe(document.documentElement, {
+	childList:     true, // watch direct additions/removals
+	subtree:       true, // watch the whole tree under the target
+	attributes:    true,  // set true if you also want attribute changes
+	CharacterData: true
+});
+
 
 // Open fullscreen
 function openFullScreen() {
@@ -2299,12 +3097,9 @@ function closeFullScreen() {
 }
 
 function isFullscreen() {
-  return !!(
-    document.fullscreenElement ||
-    document.webkitFullscreenElement ||
-    document.mozFullScreenElement ||
-    document.msFullscreenElement
-  );
+	return (window.fullScreen) || 
+	(window.innerWidth  == window.screen.width && 
+	 window.innerHeight == window.screen.height);
 }
 
 function validEmail(x) {
@@ -2329,11 +3124,12 @@ function validPhone(x) {
 
 function isSlideAnswered(slide) {
 	// slide = document.querySelector("slide.current")
-	var Continue = true, d = slide.querySelectorAll("select[required],input[required],textarea[required]");
+	let Continue = true,
+		d = slide.querySelectorAll("select[required],input[required],textarea[required]");
 	//console.log("Queried Slide:\n", slide)
 	if (d.length > 0) {
 		for (var i=0;i<d.length;i++) {
-			console.log("required?\n", d);
+			//console.log("required?\n", d);
 			var res = false;
 			//console.log(d[i].outerHTML)
 			
@@ -2379,10 +3175,6 @@ function isSlideAnswered(slide) {
 	}
 	//console.log(Continue)
 	return Continue;
-}
-
-String.prototype.replaceAt = function(index, replacement) {
-    return this.substring(0, index) + replacement + this.substring(index+1,this.length);
 }
 
 function listAllOnEvents() {
@@ -2662,21 +3454,76 @@ function stringifyArray(x, sep=[" ",";"]) {
 	return res;
 }
 
+function isEmpty(x, extra=[]) {
+	return [null, undefined, ""].concat(extra).includes(x);
+}
+
+// create the key of the recorded element:
+function recordKey() {
+	
+}
+
+function recordPInput(node) {
+	if (node.tagName!=="P-INPUT") return null;
+	var id    = node.id,
+		name  = node.getAttribute("name"),
+		type  = node.getAttribute("type"),
+		value = node.querySelector("input").value,
+		key   = "pinput",
+		res   = {};
+	
+	if (!isEmpty(id)) {
+		key = id;
+	} else if (!isEmpty(name)) {
+		key = name;
+	} else if (!isEmpty(type)) {
+		key = type;
+	} else {
+		key = stringifyNodeTag(node);
+	}
+	
+	if (type === "checkbox") {
+		var inputs = node.querySelectorAll("input,[value],[id]")
+		for (var i=0; i<inputs.length; i++) {
+			//res[] = ;
+		}
+	} else if (isEmpty(type)) {
+		//res[key] = 
+	}
+	
+}
+
 // capture values from elements into an object "obj"
 function recordElement(node, obj) {
 	if (!("content"   in obj)) obj.content   = {};
 	if (!("variables" in obj)) obj.variables = {};
 	if (!("records"   in obj)) obj.records   = {};
 	
-	type = ifNullStr(node.getAttribute("type"),"NA").toLowerCase();
-	tag  = ifNullStr(node.tagName,"NA").toLowerCase();
-	id   = node.getAttribute("id");
-	name = node.getAttribute("name");
-				
+	var type = ifNullStr(node.getAttribute("type"),"NA").toLowerCase(),
+		tag  = ifNullStr(node.tagName,"NA").toLowerCase(),
+		id   = node.getAttribute("id"),
+		name = node.getAttribute("name"),
+		cl   = node.getAttribute("name");
+	
+	if (name === null && node.getAttribute("jsfill") !== null) {
+		name = node.getAttribute("jsfill").trim().replace(/[^a-zA-Z0-9]/g, '_')
+	}
 	var key  = tag, parsed_var = "";
-	if (id   !== null)    key += ",id="   + id;
-	if (name !== null)    key += ",name=" + name;
-	if (tag  === "input") key += ",type=" + type;
+	if (!isEmpty(id)) {
+		key = id;
+	} else if (!isEmpty(name)) {
+		key = "name=" + name;
+	} else if (!isEmpty(type)) {
+		if (!isEmpty(cl)) {
+			key = tag+"."+cl+",type="+type;
+		} else {
+			key = tag+",type="+type;
+		}
+	} else if (!isEmpty(cl)) {
+		key = tag+"."+cl
+	} else {
+		key = "tag="+tag;
+	}
 	
 	// is subject input sensitive?
 	if (node.getAttribute("sensitive") !== null || ["email","tel","password"].includes(type)) {
@@ -2720,7 +3567,7 @@ function changeSlide(next=1) {
 		pslides.slideTimerTimeout = null;
 	}
 	
-	// any played audio or video files: stop them
+	// stop any played audio or video files
 	if (!Array.isArray(pslides.autoplayed)) pslides.autoplayed = [];
 	for (var i=0; i<pslides.autoplayed.length; i++) {
 		var playing = !pslides.autoplayed[i].paused;
@@ -2735,13 +3582,11 @@ function changeSlide(next=1) {
 		}
 	}
 	
-	// add responses to the "outObj" object:
-	var oldSlide = pslides.currentSlide, // document.querySelector("p-slide[current]");
-		newSlide = browseSlides(oldSlide, next);
-		
 	// go through all inputs in the p-slide (except for keyboard responses):
-	var d = oldSlide.querySelectorAll("input,textarea,select,p-gencode>span,p-var,[name]:not(p-records>[name],p-input)"),
-		tmpRes = {content:{}, variables:{}, records:{}, key: pslides.key, pointer: pslides.pointer, visibility: pslides.visibility}; // mouse: pslides.mouse
+	var oldSlide = pslides.currentSlide; // document.querySelector("p-slide[current]");
+	var d = oldSlide.querySelectorAll("input,textarea:not(p-input textarea),select:not(p-input select),p-gencode>span,p-var"), // [name]:not(p-records>[name],p-input), input:not(p-input input)
+		tmpRes = {content:{}, variables:{}, order:{}, records:{}, 
+		          key: pslides.key, pointer: pslides.pointer, visibility: pslides.visibility};
 	//console.error("tmpRes.mouse: ", tmpRes.mouse)
 	for (var i=0; i<d.length; i++) {
 		tmpRes = recordElement(d[i], tmpRes);
@@ -2766,8 +3611,11 @@ function changeSlide(next=1) {
 	// handle if slide is fully answered
 	var fullyAnswered = isSlideAnswered(oldSlide);
 	// console.log("fullyAnswered?\n",fullyAnswered);
-	if (typeof next === "number" && next>0 && !fullyAnswered) alert("Please answer the red questions.");
-		
+	if (typeof next === "number" && next>0 && !fullyAnswered) {
+		alert(pslides.printMessage("UnansweredQuestions"));
+		return;
+	}
+	
 	// create p-response tags to store button responses on the HTML document
 	createRecord(node=oldSlide, name="durationTimeMS", value=tmpRes.durationTimeMS)
 	createRecord(node=oldSlide, name="absoluteTimeMS", value=Number(pslides.slideStartTime))
@@ -2789,6 +3637,9 @@ function changeSlide(next=1) {
 	pslides.pointer    = {t:[],x:[],y:[],f:[],rx:[],ry:[],ang:[],el0:[],el1:[],type:[]};
 	pslides.key        = {up:{t:[],k:[]}, down:{t:[],k:[]}};
 	pslides.visibility = {t:[], state:[]};
+	
+	// add responses to the "outObj" object:
+	var newSlide = browseSlides(oldSlide, next);
 	
 	oldSlide.removeAttribute("current");
 	newSlide.setAttribute("current",""); // set the new current slide
@@ -2881,9 +3732,9 @@ function unnestObj(map, stringifyArrays=false) {
 	return map;
 }
 
-pslides.array2CSV = function(array, defaultObj={}) {
+pslides.standardizeArray = function(array, defaultObj={}) {
 	// array = JSON.parse(JSON.stringify(outObj.slides)); defaultObj = JSON.parse(JSON.stringify(outObj)); delete defaultObj.Slides; defaultPrefix="SESSION"
-	
+	// pslides.standardizeArray([{"a":2,"b":3},{"a":4,"b":5,"c":9}],{"default":"value"})
 	var csv = [], defaultKeys = [], newDefault={}, keys=[]; 
 	
 	// There is a default Object that will be added to each row 
@@ -2921,7 +3772,7 @@ pslides.stringifyCSV = function(csvArray) {
 	
 	// var csvArray = outObj.slides
 	
-	var csvArray = pslides.array2CSV(csvArray), keys = Object.keys(csvArray[0]), header = [], body=[], row=[];
+	var csvArray = pslides.standardizeArray(csvArray), keys = Object.keys(csvArray[0]), header = [], body=[], row=[];
 		
 	// First, make the header:
 	for (var i=0; i<keys.length; i++) {
@@ -2945,7 +3796,7 @@ function outObj2CSV(obj=outObj) {
 	var slides = [];
 	if ("slides" in obj) slides = JSON.parse(JSON.stringify(obj.slides));
 	delete obj.slides;
-	var CSVObj = pslides.array2CSV(slides, defaultObj=obj, defaultPrefix="SESSION");
+	var CSVObj = pslides.standardizeArray(slides, defaultObj=obj, defaultPrefix="SESSION");
 	return pslides.stringifyCSV(CSVObj);
 }
 
