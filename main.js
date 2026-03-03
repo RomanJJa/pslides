@@ -857,16 +857,18 @@ function handleDragOver(e) {
 	e.dataTransfer.dropEffect = "move";
 
 	const container = e.currentTarget;
-	const draggedItem = document.querySelector('p-dragdrop>[dragging]');
-	const isHorizontal = !container.getAttribute("layout")!=="col";
-	const items = Array.from(container.querySelectorAll(':scope>:not([dragging])'));
-	
+	const draggedItem = document.querySelector("p-dragdrop>[dragging]");
+	const layout = container.getAttribute("layout");
+	const isHorizontal = [null,"","row","inline","inline-block"].includes(layout);
+	//const items = Array.from(container.querySelectorAll(':scope>:not([dragging])'));
+	const items = container.querySelectorAll(":scope>:not([dragging])");
+	//console.log("items:\n", items);
 	// if nothing is in the container:
 	if (items.length === 0) {
 		container.appendChild(pslides.dropIndicator);
 		return;
 	}
-		
+	
 	const mouseX = e.clientX;
 	const mouseY = e.clientY;
 	const hoveredElement = document.elementFromPoint(mouseX, mouseY);
@@ -890,15 +892,33 @@ function handleDragOver(e) {
 	if (draggedItem === hoveredElement) {
 		pslides.dropIndicator.remove();
 	} else if (( isHorizontal && mouseX < maxdims.left) || 
-		(!isHorizontal && mouseY < maxdims.top )) {
+		       (!isHorizontal && mouseY < maxdims.top )) {
 		container.insertBefore(pslides.dropIndicator, items[0]);
-		// console.log("further from the beginning")
+		//console.log("further from the beginning")
 	} else if (( isHorizontal && mouseX > maxdims.right) ||
 	           (!isHorizontal && mouseY > maxdims.bottom)) {
 		container.appendChild(pslides.dropIndicator);
-		// console.log("further from the end")
+		//console.log("further from the end")
+	} else if (!isHorizontal) {
+		let minDist = Infinity, elCenter = null, dist = Infinity; 
+		for (var i=0; i<items.length; i++) {
+			elCenter = items[i].getBoundingClientRect();
+			dist = Math.abs(mouseY - (elCenter.top + elCenter.bottom) / 2);
+			if (dist < minDist) {
+				minDist = dist;
+				targetItem = items[i];
+			}
+		}
+		
+		// If the mouse is further than the last item: 
+		let lastRect = items[items.length - 1].getBoundingClientRect();
+		if (mouseY > (lastRect.top + lastRect.bottom) / 2) {
+			container.appendChild(pslides.dropIndicator);
+		} else {
+			container.insertBefore(pslides.dropIndicator, targetItem);
+		}
 	} else {
-		minDist = Infinity; 
+		let minDist = Infinity; 
 		items.forEach(item => {
 			const dist = coorDist(elementCenterCoor(item), 
 			                      {x:mouseX, y:mouseY});
@@ -923,23 +943,29 @@ function handleDragOver(e) {
 function handleDrop(e) {
 	e.preventDefault();
 	const hoveredElement = document.elementFromPoint(e.clientX, e.clientY);
-	const draggedItem = document.querySelector('p-dragdrop>[dragging]');
-	if (pslides.dropIndicator.style.display == "none" || 
+	const draggedItem = document.querySelector("p-dragdrop>[dragging]");
+	if (!isDOMElement(pslides.dropIndicator) || 
+	    pslides.dropIndicator.style.display == "none" || 
 		hoveredElement === draggedItem) {
 		return;
 	}
 	
-	const container = e.currentTarget;
-	if (!draggedItem) return;
+	if (!isDOMElement(draggedItem)) {
+		console.error("handleDrop(): The dragged item is not a DOM element.");
+		return;
+	}
 	
-	const items = Array.from(container.querySelectorAll(':not([dragging])'));
-	if (items.length === 0 && draggedItem.parentElement === container) {
+	const container = e.currentTarget;
+	//const items = Array.from(container.querySelectorAll(':not([dragging])'));
+	/*if (container.querySelector(":not([dragging])") !== null && 
+	    draggedItem.parentElement === container) {
 		if (pslides.dropIndicator.parentNode) {
 			pslides.dropIndicator.parentNode.removeChild(pslides.dropIndicator);
 		}
 		return;
-	}
+	}*/
 	
+	/*
 	let newItem = draggedItem;
 	if (draggedItem.parentElement !== container) {
 		newItem = document.createElement(draggedItem.tagName);
@@ -966,11 +992,21 @@ function handleDrop(e) {
 	} else {
 		container.appendChild(newItem);
 	}
+	*/
 	
-	// Remove inserted class after animation
-	setTimeout(() => {
+	
+	//////////////////////////////////////////
+	// NEW ADDITION (Can we replace all the code above?)
+	pslides.dropIndicator.parentElement.insertBefore(draggedItem, pslides.dropIndicator); 
+	pslides.dropIndicator.parentNode.removeChild(pslides.dropIndicator);
+	draggedItem.addEventListener("dragstart", handleDragStart);
+	draggedItem.addEventListener("dragend", handleDragEnd);
+	///////////////////////////////////
+	
+	// Remove inserted attribute after animation
+	/*setTimeout(() => {
 		newItem.removeAttribute('inserted');
-	}, 30);
+	}, 30);*/
 }
 
 

@@ -420,7 +420,7 @@ p-dragdrop p-dropindicator {
 p-dragdrop[layout=col]>*,
 p-dragdrop[layout=column]>* {
 	display: block;
-	margin: 10px;
+	margin: 10px auto;
 }
 @keyframes p-shrinktransform {
 	from {
