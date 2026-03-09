@@ -949,7 +949,7 @@ function handleDrop(e) {
 		hoveredElement === draggedItem) {
 		return;
 	}
-	
+	console.log("draggedItem: ")
 	if (!isDOMElement(draggedItem)) {
 		console.error("handleDrop(): The dragged item is not a DOM element.");
 		return;
@@ -1073,8 +1073,24 @@ function handleDrop(e) {
 			for (var i=0; i<ch.length; i++) {
 				ch[i].addEventListener("dragstart", handleDragStart);
 				ch[i].addEventListener("dragend", handleDragEnd);
+				if (ch[i].getAttribute("draggable")===null) {
+					ch[i].setAttribute("draggable","true");
+					ch[i].draggable = true;
+				}
 			}
 		}
+	}
+	
+	pslides.queryParents = function(node, query, start=1, limit=Infinity) {
+		let iterator = 0;
+		for (var i=0; i<=start; i++) node = node.parentNode;
+		while(node!==null && iterator<limit) {
+			if (node.matches(query)) return node;
+			node = node.parentNode;
+			iterator++;
+		}
+		if (node.matches(query)) return node;
+		return null;
 	}
 	
 	pslides.mutationObserver = new MutationObserver((mutations, obs) => {
@@ -1085,6 +1101,16 @@ function handleDrop(e) {
 				
 				// skip text, comment, etc.:
 				if (!(node instanceof Element)) continue; 
+				
+				let parentEl = node.parentElement;
+				// if element is a child of a dragdrop;
+				if (parentEl.matches("p-dragdrop") &&
+				    node.getAttribute("draggable")===null) {
+					node.setAttribute("draggable","true")
+					node.draggable = true;
+					node.addEventListener("dragstart", handleDragStart);
+					node.addEventListener("dragend", handleDragEnd);
+				}
 				
 				// Now check the node and execute function:
 				for (const [key, func] of Object.entries(pslides.nodeListeners)) {
