@@ -223,13 +223,13 @@ var outObj = {meta:{},
 
 
 // get a string which decribes the HTML branch
-function currentHTMLbranch() {
-	return nestedness(document.querySelector("p-slide[current]"), false)
+function currentSlideHtmlBranch() {
+	return htmlBranch(document.querySelector("p-slide[current]"), false)
 }
 
 
 function pushSlide(x={}) {
-	outObj.slides.push({slide:outObj.slides.length, fullscreen:null, content:{}, HTMLbranch:currentHTMLbranch(),
+	outObj.slides.push({slide:outObj.slides.length, fullscreen:null, content:{}, htmlBranch:currentSlideHtmlBranch(),
 					   screen_height: window.screen.availHeight, screen_width: window.screen.availWidth, 
 					   screen_orientation: window.screen.orientation.type,
 	                   attributes: {fullscreen:false, maxms:Infinity}, custom: {},
@@ -608,17 +608,6 @@ function unpackSlideNavigation(node) {
 		url = url + urlq.replace("?","&");
 	}
 	
-	/*
-	var send = node.getAttribute("send");
-	if (send !== null && send.trim() === "") {
-		moreclick += "sendOutData(element=this);";
-	} else if (send !== null && send.trim() !== "") {
-		var format = "";
-		if (![null,""].includes(node.getAttribute("format"))) {
-			format = ","+node.getAttribute("format");
-		}
-		moreclick += "sendOutData("+send+",element=this"+format+");";
-	}*/
 	if (node.tagName === "P-NEXT")  {
 		if (empty) node.innerHTML = "&gt;&gt;&gt;";
 	} else if (node.tagName === "P-BACK") {
@@ -630,54 +619,6 @@ function unpackSlideNavigation(node) {
 		if (empty) node.innerHTML = "<svg height='35px' width='35px' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg' fill='none'><path fill='black' fill-rule='evenodd' d='M8 3.517a1 1 0 011.62-.784l5.348 4.233a1 1 0 010 1.568l-5.347 4.233A1 1 0 018 11.983v-1.545c-.76-.043-1.484.003-2.254.218-.994.279-2.118.857-3.506 1.99a.993.993 0 01-1.129.096.962.962 0 01-.445-1.099c.415-1.5 1.425-3.141 2.808-4.412C4.69 6.114 6.244 5.241 8 5.042V3.517zm1.5 1.034v1.2a.75.75 0 01-.75.75c-1.586 0-3.066.738-4.261 1.835a8.996 8.996 0 00-1.635 2.014c.878-.552 1.695-.916 2.488-1.138 1.247-.35 2.377-.33 3.49-.207a.75.75 0 01.668.745v1.2l4.042-3.2L9.5 4.55z' clip-rule='evenodd'/></svg>"
 	}
 }
-
-
-
-function unpackDataid(node=document) {
-	// download csv file onto the html
-	
-	// fill in the csv files
-	var d = document.querySelectorAll("p-set[dataid],p-template");
-	for (var i=0; i<d.length; i++) {
-		var template = d[i].innerHTML, res = "", data = "";
-		var delim = d[i].getAttribute("delim"); 
-			if (delim===null) delim = "{{ }}"; delim = splitWhitespace(delim.trim())
-				
-		var dataid = ifNullStr(d[i].getAttribute("dataid"));
-		if (dataid !== "") { // fill the template with data from p-data
-			data = document.getElementById(dataid);
-			content = pslides.data[dataid] // data.innerHTML // the content should be saved to a JS object!
-			var format = getFormatAttribute(d[i])[0];
-			
-			// var format = dataid.substring(dataid.lastIndexOf("."),dataid.length).toLowerCase();
-			// fetch(dataid).then((response) => response.text()).then((text) => {data = text});
-			
-			if (content !== undefined && ["json","csv","tsv"].includes(format)) {
-				for (var j=0;j<content.length;j++) { // over j rows
-					var current_template = template
-					for (let k in content[j]) { // over k columns
-						if (Array.isArray(content[j][k]) || typeof content[j][k] === 'object') {
-							current_template = current_template.replaceAll(delim[0]+k+delim[1], stringify(content[j][k]));
-						} else {
-							current_template = current_template.replaceAll(delim[0]+k+delim[1], String(content[j][k]));
-						}
-					}
-					res += current_template;
-				}
-			} else if (![undefined,null].includes(content)) {
-				if (Array.isArray(content)) {
-					for (var j=0;j<content.length;j++) { // over j rows
-						var current_template = template
-							current_template = current_template.replace(delim[0]+"i"+delim[1], stringify(content[j][k]))
-						res += current_template;
-					}
-				}
-			}
-			d[i].innerHTML = res;
-		}
-	}
-}
-
 
 
 async function unpackPData(node) {
@@ -804,11 +745,11 @@ function handleDragStart(e) {
 		if (["col","column"].includes(event.target.parentElement.getAttribute("layout"))) {
 			marginY = parseFloat(style.height) //+ parseFloat(style.marginTop) + parseFloat(style.marginBottom)
 		}
-		pslides.dropIndicator.style.height        = marginY+"px";
-		pslides.dropIndicator.style.maxHeight     = marginY+"px";
-		pslides.dropIndicator.style.width         = marginX+"px";
-		pslides.dropIndicator.style.maxWidth      = marginX+"px";
-		pslides.dropIndicator.style.borderRadius  = style.borderRadius;
+		pslides.dropIndicator.style.height       = marginY+"px";
+		pslides.dropIndicator.style.maxHeight    = marginY+"px";
+		pslides.dropIndicator.style.width        = marginX+"px";
+		pslides.dropIndicator.style.maxWidth     = marginX+"px";
+		pslides.dropIndicator.style.borderRadius = style.borderRadius;
 	}
 	shapeDropindicator(e);
 		
@@ -964,37 +905,7 @@ function handleDrop(e) {
 		}
 		return;
 	}*/
-	
-	/*
-	let newItem = draggedItem;
-	if (draggedItem.parentElement !== container) {
-		newItem = document.createElement(draggedItem.tagName);
-		//newItem = draggedItem.cloneNode(true);
 		
-		// copy all attributes:
-		[...draggedItem.attributes].forEach(
-			attr => { newItem.setAttribute(attr.nodeName, attr.nodeValue) }
-		)
-		//newItem.className = `drag-item ${container.classList.contains('main-container') ? 'main-container' : 'bucket-container'} inserted`;
-		newItem.removeAttribute("dragging")
-		newItem.style.display = "";
-		newItem.setAttribute("inserted","")
-		newItem.innerHTML = draggedItem.innerHTML;
-		newItem.draggable = true;
-		newItem.addEventListener("dragstart", handleDragStart);
-		newItem.addEventListener("dragend", handleDragEnd);
-		draggedItem.remove();
-	}
-	
-	// Replace dropIndicator with newItem
-	if (pslides.dropIndicator.parentNode === container) {
-		container.replaceChild(newItem, pslides.dropIndicator);
-	} else {
-		container.appendChild(newItem);
-	}
-	*/
-	
-	
 	//////////////////////////////////////////
 	// NEW ADDITION (Can we replace all the code above?)
 	pslides.dropIndicator.parentElement.insertBefore(draggedItem, pslides.dropIndicator); 
@@ -1078,6 +989,36 @@ function handleDrop(e) {
 					ch[i].draggable = true;
 				}
 			}
+		},
+		"p-gencode,p-subjcode": function(node) {
+			// also set default values
+			// var node = document.querySelector("p-subjcode")
+			var n      = ifNullStr(node.getAttribute("n"),"3"), 
+				chunks = ifNullStr(node.getAttribute("chunks"),"3"), 
+				sep    = ifNullStr(node.getAttribute("sep"),"-"),
+				code   = "?";
+			
+			if (node.tagName==="P-SUBJCODE") {
+				code = document.querySelector("meta[name='pslides:subj']").getAttribute("content");
+			} else if (node.tagName === "P-GENCODE") {
+				code = generateCode(n=Number(n), chunks=Number(chunks), set=36, sep=sep)
+			}
+			
+			res = "<span>"+code+"</span>";
+			if (node.tagName==="P-GENCODE" && node.getAttribute("regen")!==null) {
+				res+="<button style='padding:0;line-height:0;font-size:130%' onclick='handleGenCode(this.parentElement)'>&#8635;</button>"; // style='font-size:130%;padding-top:0;padding-bottom:0'
+			} 
+			// res+="<button onclick='copyInnerHTML(this.parentElement.firstChild)'><span style='font-size:.88em;margin-right:.12em;position:relative;top:-.24em;left:-.12em'>📄<span style='position:absolute;top:.24em;left:.24em'>📄</span></span></button>"
+			res+="<button onclick='copyInnerHTML(this.parentElement.firstChild)'>"+
+			"<svg alt='COPY' fill='#000000' height='800px' width='800px' version='1.1' viewBox='0 0 330 330' preserveAspectRatio='none' xml:space='preserve'>"+"<g>"+
+				"<path d='M35,270h45v45c0,8.284,6.716,15,15,15h200c8.284,0,15-6.716,15-15V75c0-8.284-6.716-15-15-15h-45V15"+
+					"c0-8.284-6.716-15-15-15H35c-8.284,0-15,6.716-15,15v240C20,263.284,26.716,270,35,270z M280,300H110V90h170V300z M50,30h170v30H95 "+
+					"c-8.284,0-15,6.716-15,15v165H50V30z'/>"+
+				"<path d='M155,120c-8.284,0-15,6.716-15,15s6.716,15,15,15h80c8.284,0,15-6.716,15-15s-6.716-15-15-15H155z'/>"+
+				"<path d='M235,180h-80c-8.284,0-15,6.716-15,15s6.716,15,15,15h80c8.284,0,15-6.716,15-15S243.284,180,235,180z'/>"+
+				"<path d='M235,240h-80c-8.284,0-15,6.716-15,15c0,8.284,6.716,15,15,15h80c8.284,0,15-6.716,15-15C250,246.716,243.284,240,235,240z'/>"+
+			"</g></svg>"+"</button>"
+			node.innerHTML=res;
 		}
 	}
 	
@@ -1104,10 +1045,11 @@ function handleDrop(e) {
 				
 				let parentEl = node.parentElement;
 				// if element is a child of a dragdrop;
-				if (parentEl.matches("p-dragdrop") &&
-				    node.getAttribute("draggable")===null) {
-					node.setAttribute("draggable","true")
-					node.draggable = true;
+				if (parentEl!==null && parentEl.matches("p-dragdrop")) {
+					if (node.getAttribute("draggable")===null) {
+						node.setAttribute("draggable","true");
+						node.draggable = true;
+					}
 					node.addEventListener("dragstart", handleDragStart);
 					node.addEventListener("dragend", handleDragEnd);
 				}
@@ -1868,6 +1810,11 @@ function setMetaElement(name, content=null) {
 		outObj.meta[name] = content;
 	}
 	
+	// if run locally, store values in local storage:
+	if (window.location.protocol === "file:") {
+		localStorage.setItem(name, content)
+	}
+	
 	return meta;
 }
 
@@ -2292,21 +2239,41 @@ function handleOnclicks(node=document) {
 }
 */
 
-
+pslides.commonPath = function(a, b) {
+	let i = 0, asplit = a.split("/"), bsplit = b.split("/");
+	while (i < asplit.length && i < bsplit.length && asplit[i] === bsplit[i]) i++;
+	return asplit.splice(0, i).join("/");
+}
 
 
 function updateURIParameters(url, params) {
-    let urlObj = new URL(url, window.location.origin); // Ensure valid URL
-    let searchParams = urlObj.searchParams;
-	
-    // Update or add parameters
-    Object.entries(params).forEach(([key, value]) => {
-        if (Array.isArray(value) && value.length>0) {
-			searchParams.set(key, value.join(" "));
-		} else if (![null,undefined,""].includes(value)) {
-			searchParams.set(key, value);
-		}
-    });
+	let urlObj = new URL(url, window.location.origin); // Ensure valid URL
+    
+	// Update or add parameters
+	if (window.location.origin==="file://") {
+		//let base = pslides.commonPath(document.head.querySelector("base").href, url);
+		let base = document.head.baseURI;
+		console.log("url: ", url)
+		//console.log("base: ", base)
+		console.log("true base: ", base)
+		urlObj = new URL(url, base);
+		Object.entries(params).forEach(([key, value]) => {
+			if (Array.isArray(value) && value.length>0) {
+				localStorage.setItem(key, value.join(" "));
+			} else if (![null,undefined,""].includes(value)) {
+				localStorage.setItem(key, value);
+			}
+		});
+	} else {
+		let searchParams = urlObj.searchParams;
+		Object.entries(params).forEach(([key, value]) => {
+			if (Array.isArray(value) && value.length>0) {
+				searchParams.set(key, value.join(" "));
+			} else if (![null,undefined,""].includes(value)) {
+				searchParams.set(key, value);
+			}
+		});
+	}
     return urlObj.toString();
 }
 
@@ -2324,8 +2291,7 @@ function createRedirectURI(href=null) {
 	let params = extractParameter(["root","prj","subj","agenda","session","cond"]),
 		agenda = params["agenda"],
 		isValid = pslides.isValidURL(href);
-	if ([undefined,null,""].includes(agenda)) return;
-	// URL parameter takes precedence over provided content:
+	// href takes precedence over provided content.
 	
 	// now go through all p-redirect and p-exit elements.
 	// URLs should be updated according to the URL parameters.
@@ -2344,40 +2310,39 @@ function createRedirectURI(href=null) {
 				agenda0 = "/"+agenda0;
 			}
 			agenda0 = document.head.baseURI+agenda0;
-		}		
-		params["agenda"] = agenda.slice(1).join(" ");
-		agenda0 = updateURIParameters(agenda[0], params);
-		console.log("agenda0: ", agenda0)
-		setMetaElement("agenda", agenda.join(" "));
+		}
+		agenda = agenda.slice(1);
+		params["agenda"] = agenda.join(" ");
+		agenda0 = updateURIParameters(agenda0, params);
+		//console.log("agenda0: ", agenda0)
+		setMetaElement("agenda", params["agenda"]);
 	} else {
 		agenda0 = updateURIParameters(window.location.href, params);
 	}
-	
 	return agenda0;
 }
 
 function createSubjCodes() {
 	var pars = extractParameter(["subj","session","cond"]);
 	
+	console.log("createSubjCodes(): pars: ", pars)
+	
 	// Subject Code
 	var subj = pars.subj, d = setMetaElement("subj")
-	if (subj === "") subj = d.getAttribute("content");
-	if ([null,undefined,""].includes(subj)) {
+	if (isEmpty(subj)) subj = d.getAttribute("content");
+	if (isEmpty(subj)) {
 		var n      = ifNullStr(d.getAttribute("n"),"3"), 
 			chunks = ifNullStr(d.getAttribute("chunks"),"3"), 
 			sep    = ifNullStr(d.getAttribute("sep"),"-"),
 			subj   = generateCode(n=eval(n), chunks=eval(chunks), set=36, sep=sep);
 		/*d.setAttribute("content", subj);
 		outObj.meta.subj = subj;*/
-	} else {
-		/*d.setAttribute("content", subj)
-		outObj.meta.subj = subj;*/
 	}
 	setMetaElement("subj", subj)
-	outObj.meta.origSubjCode = subj
+	outObj.meta.subj = subj
 	
 	// Session code: if not in a URL parameter, just generate it.
-	if (pars.session === "") pars.session = generateUTCCode();
+	if (isEmpty(pars.session)) pars.session = generateUTCCode();
 	setMetaElement("session", pars.session);
 	//outObj.meta.session = pars.session;
 }
@@ -2771,7 +2736,14 @@ function handleSendAttribute(node, onload=null) {
 	var obj = null, js = node.getAttribute("js"),
 		format = node.getAttribute("format");
 	if (!isEmpty(js)) obj = tryEval(js, at=node);
-	return sendOutData(element=node, data=obj, format=format, onload=onload);
+	if (window.location.protocol!=="file:") {
+		return sendOutData(element=node, data=obj, format=format, onload=onload);
+	} else if (typeof onload == "function") {
+		onload();
+	} else {
+		console.error("No onload function in handleSendAttribute().");
+	}
+	return null
 }
 
 
@@ -2831,14 +2803,23 @@ function pointerUpHandleButtons(target) {
 			// remove event listener for beforeunload:
 			window.removeEventListener("beforeunload", pslides.beforeunload);
 			
-			if ([null,undefined,""].includes(href) || href.trim() === "") {
-				href = window.location.origin+pslides.serverRootPath+"/"+
+			if (isEmpty(href) || href.trim() === "") {
+				href = window.location.origin + pslides.serverRootPath + "/" +
 				       params.root+"/"+params.prj+"/app/?subj="+params.subj;
 			}
 			
 			// remove information from local storage:
+			localStorage.clear();
+			/*
 			localStorage.removeItem("session");
+			localStorage.removeItem("subj");
+			localStorage.removeItem("cond");
+			localStorage.removeItem("agenda");
+			localStorage.removeItem("prj");
+			localStorage.removeItem("root");
+			*/
 			
+			// Set the new URL:
 			window.location.href = href;
 		});
 	}
@@ -2881,12 +2862,6 @@ function stringifyHTMLAttribute(name, value="") {
 	}
 	return " "+name+"=\""+escapeString(value)+"\"";
 }
-
-// ????
-pslides.changeSubjCode = function(node) {
-	return node.value;
-}
-
 
 // Event handler for pointer events
 function recordPointerEvent(event) {
@@ -3059,6 +3034,7 @@ pslides.beforeunload = function(event) {
 	// Standard message (browsers ignore custom text for security)
 	const message = pslides.printMessage("BeforeClosingWindow");
 	event.returnValue = message; // for legacy browsers
+	//localStorage.clear(); // clear local storage.
 	return message;          // for modern browsers
 }
 
@@ -3098,7 +3074,7 @@ window.onload = function() {
 	for (var i=0; i < d.length; i++) {
 		d[i].insertAdjacentHTML("afterbegin", "<option value=''> </option>");
 	}
-	handleAllGenCodes();
+	//handleAllGenCodes();
 	
 	// last slide has extra button
 	const lastSlide = document.createElement("p-slide");
@@ -3249,7 +3225,7 @@ function listAllOnEvents() {
 	return res;
 }
 
-function nestedness(node, verbose=false) {
+function htmlBranch(node, verbose=false) {
 	var res = "", resb = "",
 		ignored = ["p_hiddenclass","current","jsfill","idfill","cond","jsattr"].concat(listAllOnEvents()),
 		wanted = ["name","id","type","class"];
@@ -3555,6 +3531,70 @@ function recordPInput(node) {
 	
 }
 
+
+pslides.camelCase = function(x) {
+	if (typeof x === "string") {
+		x = x.split(/[\n \t\-\?\,\!\;\.]/g).filter(x => x!=="")
+	}
+	for (var i=0; i<x.length; i++) {
+		x[i] = x[i][0].toUpperCase() + x[i].substring(1);
+	}
+	return x.join("");
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+function nameNode(node) {
+	if (!isDOMElement(node)) return null;
+	var type = ifNullStr(node.getAttribute("type"),"NA").toLowerCase(),
+		tag  = ifNullStr(node.tagName,"NA").toLowerCase(),
+		id   = node.id.replaceAll(";",",").replaceAll(" ","_"),
+		name = node.getAttribute("name").replaceAll(";",",").replaceAll(" ","_"),
+		cl   = node.className.replaceAll(";",",").replaceAll(" ","_");
+	
+	if (!isEmpty(id)) return "id="+id.replaceAll(";",",");
+	
+	if (!isEmpty(name)) {
+		name = "name="+name
+	} else {
+		name="";
+	}
+	
+	if (name=="" && !isEmpty(cl)) {
+		cl = "class="+cl
+	} else {
+		cl="";
+	}
+	
+	let slide = pslides.queryParents(node, query="p-slide", start=1, limit=Infinity),
+		slideText = slide.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!==""),
+		nodeText = node.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!==""),
+		forText = slide.querySelector("[for=\""+escapeString(node.id)+"\"]");
+	if (nodeText.length == 0 && !isEmpty(node.id) && forText!==null) {
+		nodeText = forText.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!=="");
+	}
+	let i = 0;
+	while (nodeText.length>8 && i<nodeText.length) {
+		if (slideText.filter(x => x.toLowerCase() === nodeText[i].toLowerCase()).length>0) {
+			nodeText = nodeText.filter(x => x.toLowerCase() !== nodeText[i].toLowerCase())
+		} else {
+			i++;
+		}
+	}
+	
+	if (nodeText.length>0) nodeText = "text="+pslides.camelCase(nodeText);
+	return [tag, cl, name, nodeText].filter(x => !isEmpty(x)).join(".");
+}
+
+
+
 // capture values from elements into an object "obj"
 function recordElement(node, obj) {
 	if (!("content"   in obj)) obj.content   = {};
@@ -3598,7 +3638,7 @@ function recordElement(node, obj) {
 		obj.content[key] = node.value;
 	} else if (tag === "span" && node.parentElement.tagName==="P-GENCODE") {
 		obj.content[key.replace("span","p-gencode")] = node.innerText;
-	} else if (tag === "p-var" && [undefined,null,""].includes(name)) {
+	} else if (tag === "p-var" && !isEmpty(name)) {
 		parsed_var = parse(node.innerHTML);
 		if (parsed_var !== null && typeof parsed_var === "object" && !Array.isArray(parsed_var)) {
 			obj.variables = {...obj.variables, ...parsed_var};
@@ -3664,7 +3704,7 @@ function changeSlide(next=1) {
 	
 	tmpRes.durationTimeMS = pslides.slideEndTime - pslides.slideStartTime;
 	tmpRes.absoluteTimeMS = Number(pslides.slideStartTime);
-	tmpRes.HTMLbranch     = nestedness(oldSlide);
+	tmpRes.htmlBranch     = htmlBranch(oldSlide);
 	
 	// add to the current outObj slide:
 	outObj.slides[outObj.slides.length-1] = {...outObj.slides[outObj.slides.length-1] , ...tmpRes};
