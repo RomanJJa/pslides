@@ -16,8 +16,18 @@ If you use this library in a publication, whether it be a scientific
 publication, preprint, blogpost, or presentation, we kindly request that you 
 cite this library as follows (APA style):
 
-Janssen, R. J. (2025). PSlides (Version 0.2.0) [Computer software]. 
-GitHub. https://github.com/RomanJJa/pslides
+Janssen, R. (2026). PSlides: An HTML-first JavaScript library for browser-based psychological experiments and surveys. Center for Open Science. https://doi.org/10.31234/osf.io/q83jp_v1
+
+Bibtex citation:
+@misc{Janssen_2026,
+  title={PSlides: An HTML-first JavaScript library for browser-based psychological experiments and surveys},
+  url={http://dx.doi.org/10.31234/osf.io/q83jp_v1},
+  DOI={10.31234/osf.io/q83jp_v1}, 
+  publisher={Center for Open Science},
+  author={Janssen, Roman}, 
+  year={2026},
+  month=feb
+} 
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
