@@ -724,7 +724,7 @@ async function unpackPData(node) {
 
 
 /////////////////////////////////////////////////////////////////
-//                Drag & Drop
+//                         Drag & Drop                         //
 /////////////////////////////////////////////////////////////////
 
 function handleDragStart(e) {
@@ -772,6 +772,33 @@ function handleDragStart(e) {
 	}, 2)
 }
 
+// Check if the exporter or acceptor (p-dragdrop elements) are accepted.
+pslides.isDropForbidden = function(exporter, importer) {
+	// pslides.isDropForbidden(exporter, importer)
+	// import: false,
+	// export: false,
+	if (!isDOMElement(exporter) || !isDOMElement(importer) || exporter===importer) return false;
+	
+	let importStr = importer.getAttribute("import"),
+		exportStr = exporter.getAttribute("export");
+	
+	if (isEmpty(importStr)  && isEmpty(exportStr)) return false;
+	if (!isEmpty(importStr) && ["false","0"].includes(importStr.trim())) return true;
+	if (!isEmpty(exportStr) && ["false","0"].includes(exportStr.trim())) return true;
+	
+	if ((!isEmpty(importStr) || ["true","1"].includes(importStr.trim()) ) &&
+	    (!isEmpty(exportStr) || ["true","1"].includes(exportStr.trim())) ) return false;
+	
+	if (isEmpty(exporter.id) && isEmpty(importer.id)) return false;
+	
+	let importArr = [], exportArr = [];
+	if (!isEmpty(importStr)) importArr = splitWhitespace(importStr).filter((x) => x!=="");
+	if (!isEmpty(exportStr)) exportArr = splitWhitespace(exportStr).filter((x) => x!=="");
+	let importAllowed = isEmpty(exporter.id) || importArr.includes(exporter.id),
+		exportAllowed = isEmpty(importer.id) || exportArr.includes(importer.id);
+	if (importAllowed && exportAllowed) return false;
+	return true;
+}
 
 function handleDragEnd(e) {
 	e.target.removeAttribute("dragging");
@@ -780,6 +807,7 @@ function handleDragEnd(e) {
 	}
 	e.target.style.display = "";
 }
+
 
 function handleDragOver(e) {
 	
@@ -799,6 +827,10 @@ function handleDragOver(e) {
 
 	const container = e.currentTarget;
 	const draggedItem = document.querySelector("p-dragdrop>[dragging]");
+	
+	// If receive="false", deliver="false"
+	if (pslides.isDropForbidden(draggedItem.parentElement, container)) return;
+	
 	const layout = container.getAttribute("layout");
 	const isHorizontal = [null,"","row","inline","inline-block"].includes(layout);
 	//const items = Array.from(container.querySelectorAll(':scope>:not([dragging])'));
@@ -810,8 +842,7 @@ function handleDragOver(e) {
 		return;
 	}
 	
-	const mouseX = e.clientX;
-	const mouseY = e.clientY;
+	const mouseX = e.clientX, mouseY = e.clientY;
 	const hoveredElement = document.elementFromPoint(mouseX, mouseY);
 		
 	maxdims = {left:Infinity, right:-Infinity, top:Infinity, bottom:-Infinity}
@@ -890,12 +921,12 @@ function handleDrop(e) {
 		hoveredElement === draggedItem) {
 		return;
 	}
-	console.log("draggedItem: ")
+	console.log("draggedItem:", draggedItem)
 	if (!isDOMElement(draggedItem)) {
 		console.error("handleDrop(): The dragged item is not a DOM element.");
 		return;
 	}
-	
+		
 	const container = e.currentTarget;
 	//const items = Array.from(container.querySelectorAll(':not([dragging])'));
 	/*if (container.querySelector(":not([dragging])") !== null && 
@@ -905,6 +936,11 @@ function handleDrop(e) {
 		}
 		return;
 	}*/
+
+	if (pslides.isDropForbidden(draggedItem.parentElement, container)) {
+		return;
+	}
+
 		
 	//////////////////////////////////////////
 	// NEW ADDITION (Can we replace all the code above?)
@@ -1411,18 +1447,26 @@ pslides.pseudoShuffleArray(items, [new pslides.orderRule(obj={type:'A'}, within=
 
 function handlePSet(node) {
 	// node = document.getElementById("experiment")
-	var order = ifNullStr(node.getAttribute("order"));
-	var n = Number(ifNullStr(node.getAttribute("n"))); //, preshuffle = true;
-	if (order==="shuffle") {
-		shuffleSeq(node)
-	} else if (order.substring(0,13)==="pseudoshuffle") {
-		var tol = tryEval(order.substring(order.indexOf("(")+1,order.lastIndexOf(")")), at=node);
-		pseudoShuffleSeq(node, tol)
+	let order = ifNullStr(node.getAttribute("order")),
+		nstr  = node.getAttribute("n"),
+		n     = Number(ifNullStr(nstr)); //, preshuffle = true;
+	
+	// Handle order:
+	if (!isEmpty(order)) {
+		order = order.toLowerCase();
+		if (order==="shuffle") {
+			shuffleSeq(node)
+		} else if (order.substring(0,13)==="pseudoshuffle") {
+			var tol = tryEval(order.substring(order.indexOf("(")+1,order.lastIndexOf(")")), at=node);
+			pseudoShuffleSeq(node, tol)
+		}
 	}
 	
-	if (isNaN(n) || n==0) return;
-	while (node.children.length > n) node.children[n].remove();
-	
+	// Handle n:
+	if (isEmpty(nstr) || isNaN(n)) return;
+	while (node.children.length > n) {
+		node.children[node.children.length-1].remove();
+	}
 	// insert the n. !!!!!!!!!!!!!
 }
 
@@ -1524,15 +1568,6 @@ function handleDataid(node=document) {
 			}
 			d[i].innerHTML = res;
 		}
-		
-		// then we will insert the javascript variables with eval
-		// temp = d[i].innerHTML;
-		// var i1 = temp.indexOf(delim[0]), i2 = temp.indexOf(delim[1]), insert = "";
-		// while (i1 >= 0 && i2 >= 0 && i1 < i2) {
-		//	insert = tryEval(temp.substring(i1+delim[0].length, i2), at=d[i]);
-		//	temp   = temp.substring(0, i1) + insert + temp.substring(i2+delim[1].length, temp.length);
-		//	i1     = temp.indexOf(delim[0]); i2 = temp.indexOf(delim[1]);
-		//}
 	}
 }
 
