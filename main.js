@@ -786,6 +786,7 @@ pslides.isDropForbidden = function(exporter, importer) {
 	if (!isEmpty(importStr) && ["false","0"].includes(importStr.trim())) return true;
 	if (!isEmpty(exportStr) && ["false","0"].includes(exportStr.trim())) return true;
 	
+	// if import=true or export=true, we also want to have unrestricted transfers:
 	if ((!isEmpty(importStr) || ["true","1"].includes(importStr.trim()) ) &&
 	    (!isEmpty(exportStr) || ["true","1"].includes(exportStr.trim())) ) return false;
 	
@@ -3083,27 +3084,10 @@ window.onload = function() {
 	createSubjCodes();
 	pslides.setLanguage();
 	
-	//handlePData();
-	
-	//handleDataid();
-	//handleOnclicks();
-	// sample <p-set>
-	
-	//handleFillid();
 	
 	// initialize the array for querySelectorAll()
 	var d = [];
-	
-	//d = document.querySelectorAll("p-input");
-	//for (var i=0; i<d.length; i++) unpackPInput(d[i]);
-	
-	//var d = document.querySelectorAll("[jsattr][jsfill]");
-	//for (var i=0; i<d.length; i++) evalJSAttr(d[i]);
-	
-	// shuffle all children in <p-set> tags
-	// d = document.querySelectorAll("p-set");
-	// for (var i=0; i<d.length; i++) handlePSet(d[i]);
-	
+		
 	// select tag: create a default value!
 	d = document.querySelectorAll("select");
 	for (var i=0; i < d.length; i++) {
@@ -3119,6 +3103,12 @@ window.onload = function() {
 	
 	pslides.currentSlide = findNextSlide(document.body);
 	pushSlide();
+	
+	// pre-record p-dragdrop order:
+	let nslides = outObj.slides.length-1;
+	outObj.slides[nslides] = {...outObj.slides[nslides], 
+	                          ...recordNewSlide(pslides.currentSlide)};
+	
 	pslides.currentSlide.setAttribute("p_hiddenclass", "current"); // make first slide visible
 	pslides.currentSlide.setAttribute("current", "");              // mark first slide
 	prepareSlide(pslides.currentSlide)
@@ -3590,11 +3580,11 @@ function nameNode(node) {
 	if (!isDOMElement(node)) return null;
 	var type = ifNullStr(node.getAttribute("type"),"NA").toLowerCase(),
 		tag  = ifNullStr(node.tagName,"NA").toLowerCase(),
-		id   = node.id.replaceAll(";",",").replaceAll(" ","_"),
-		name = node.getAttribute("name").replaceAll(";",",").replaceAll(" ","_"),
-		cl   = node.className.replaceAll(";",",").replaceAll(" ","_");
+		id   = node.id.replaceAll(" ","_"),
+		name = ifNullStr(node.getAttribute("name")).replaceAll(" ","_"),
+		cl   = ifNullStr(node.className).replaceAll(" ","_");
 	
-	if (!isEmpty(id)) return "id="+id.replaceAll(";",",");
+	if (!isEmpty(id)) return "#"+id;
 	
 	if (!isEmpty(name)) {
 		name = "name="+name
@@ -3617,15 +3607,23 @@ function nameNode(node) {
 	}
 	let i = 0;
 	while (nodeText.length>8 && i<nodeText.length) {
-		if (slideText.filter(x => x.toLowerCase() === nodeText[i].toLowerCase()).length>0) {
+		if (slideText.filter(x => x.toLowerCase() === nodeText[i].toLowerCase()).length>1) {
 			nodeText = nodeText.filter(x => x.toLowerCase() !== nodeText[i].toLowerCase())
 		} else {
 			i++;
 		}
 	}
 	
-	if (nodeText.length>0) nodeText = "text="+pslides.camelCase(nodeText);
-	return [tag, cl, name, nodeText].filter(x => !isEmpty(x)).join(".");
+	if (nodeText.length>0) return tag+".text="+pslides.camelCase(nodeText);
+	return [tag, cl, name].filter(x => !isEmpty(x)).join(".");
+}
+
+function nameNodeChildren(node) {
+	let children = node.children, res = [];
+	for (var i=0; i<children.length; i++) {
+		res.push(nameNode(children[i]))
+	}
+	return res;
 }
 
 
@@ -3662,6 +3660,15 @@ function recordElement(node, obj) {
 		key = "tag="+tag;
 	}
 	
+	// Record order after slide is presented:
+	if (node.getAttribute("order") !== null && tag!=="p-dragdrop") {
+		if (!("order" in obj)) obj.order = {};
+		obj.order[nameNode(node)] = nameNodeChildren(node);
+	} else if (tag==="p-dragdrop") {
+		if (!("order1" in obj)) obj.order1 = {};
+		obj.order1[nameNode(node)] = nameNodeChildren(node);
+	}
+	
 	// is subject input sensitive?
 	if (node.getAttribute("sensitive") !== null || ["email","tel","password"].includes(type)) {
 		console.warn("No data that reveal personal information should be submitted.");
@@ -3694,6 +3701,16 @@ function recordElement(node, obj) {
 }
 
 
+function recordNewSlide(slide) {
+	d = slide.querySelectorAll("p-dragdrop");
+	res = {};
+	if (d.length>0) res.order0 = {};
+	for (var i=0; i<d.length; i++) {
+		res.order0[nameNode(d[i])] = nameNodeChildren(d[i])
+	}
+	return res;
+}
+
 
 // which "next page" is clicked
 function changeSlide(next=1) {
@@ -3721,7 +3738,7 @@ function changeSlide(next=1) {
 	
 	// go through all inputs in the p-slide (except for keyboard responses):
 	var oldSlide = pslides.currentSlide; // document.querySelector("p-slide[current]");
-	var d = oldSlide.querySelectorAll("input,textarea:not(p-input textarea),select:not(p-input select),p-gencode>span,p-var"), // [name]:not(p-records>[name],p-input), input:not(p-input input)
+	var d = oldSlide.querySelectorAll("input,textarea:not(p-input textarea),select:not(p-input select),p-gencode>span,p-var,p-dragdrop"), // [name]:not(p-records>[name],p-input), input:not(p-input input)
 		tmpRes = {content:{}, variables:{}, order:{}, records:{}, 
 		          key: pslides.key, pointer: pslides.pointer, visibility: pslides.visibility};
 	//console.error("tmpRes.mouse: ", tmpRes.mouse)
@@ -3796,7 +3813,14 @@ function changeSlide(next=1) {
 	pslides.currentSlide = newSlide;
 	var maxms = prepareSlide(newSlide);
 	newSlide.setAttribute("p_hiddenclass", "current");
+	
+	// Record order before the slide is presented:
+	let nslides = outObj.slides.length-1;
+	outObj.slides[nslides] = {...outObj.slides[nslides], 
+	                          ...recordNewSlide(newSlide)};
+	
 	/*
+	// Play and reset audio time:
 	document.getElementById("myaudio").play()
 	setTimeout(function(){var audio = document.getElementById("myaudio"); audio.pause(); audio.currentTime = 0}, 1000)
 	*/
