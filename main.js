@@ -752,6 +752,29 @@ function handleDragStart(e) {
 		pslides.dropIndicator.style.borderRadius = style.borderRadius;
 	}
 	shapeDropindicator(e);
+	
+	/*function forbidDragdrops(event) {
+		let exporter = pslides.queryParents(event.target, query="p-dragdrop"),
+			exporterID = exporter.id,
+			exportAttr = exporter.getAttribute("export"),
+			forbidExport = ["false","0"].includes(exportAttr),
+			exportIDs = splitWhitespace(ifNullStr(exportAttr).trim()).filter((x) => x!==""),
+			importers = pslides.currentSlide.querySelectorAll("p-dragdrop[import]")
+		
+		for (var i=0; i<importers.length; i++) {
+			let importAttr = importers[i].getAttribute("import"),
+				forbidImport = ["false","0"].includes(importAttr),
+				importIDs  = splitWhitespace(ifNullStr(importAttr).trim()).filter((x) => x!=="");
+			
+			if (importers[i]!==exporter && (forbidExport || forbidImport)) {
+				importers[i].setAttribute("p_hiddenclass","forbidden")
+			} else if (importers[i] !== exporter && 
+			           (exportIDs.includes(importers[i].id) || importIDs.includes(importers[i].id))) {
+				importers[i].setAttribute("p_hiddenclass","forbidden")
+			}
+		}
+	}
+	forbidDragdrops(e)*/
 		
 	// element style:
 	let elRect   = e.target.getBoundingClientRect();
@@ -785,24 +808,23 @@ pslides.isDropForbidden = function(exporter, importer) {
 		return false;
 	}
 	
-	let importStr = importer.getAttribute("import"),
-		exportStr = exporter.getAttribute("export");
+	let importStr = ifNullStr(importer.getAttribute("import")).trim(),
+		exportStr = ifNullStr(exporter.getAttribute("export")).trim();
 	
-	if (isEmpty(importStr)  && isEmpty(exportStr)) return false;
-	if (!isEmpty(importStr) && ["false","0"].includes(importStr.trim())) return true;
-	if (!isEmpty(exportStr) && ["false","0"].includes(exportStr.trim())) return true;
+	if (importStr==="" && exportStr==="") return false;
+	if (["false","0"].includes(importStr) || ["false","0"].includes(exportStr)) return true;
 	
 	// if import=true or export=true, we also want to have unrestricted transfers:
-	if ((!isEmpty(importStr) || ["true","1"].includes(importStr.trim()) ) &&
-	    (!isEmpty(exportStr) || ["true","1"].includes(exportStr.trim())) ) return false;
+	//if (["true","1",""].includes(importStr) && ["true","1",""].includes(exportStr) ) return false;
+	//if (isEmpty(exporter.id) && isEmpty(importer.id)) return false;
 	
-	if (isEmpty(exporter.id) && isEmpty(importer.id)) return false;
+	let importArr = splitWhitespace(importStr).filter((x) => x!==""),
+		exportArr = splitWhitespace(exportStr).filter((x) => x!=="");
+	// console.log("importArr: ", importArr);
+	// console.log("exportArr: ", exportArr);
 	
-	let importArr = [], exportArr = [];
-	if (!isEmpty(importStr)) importArr = splitWhitespace(importStr).filter((x) => x!=="");
-	if (!isEmpty(exportStr)) exportArr = splitWhitespace(exportStr).filter((x) => x!=="");
-	let importAllowed = isEmpty(exporter.id) || importArr.includes(exporter.id),
-		exportAllowed = isEmpty(importer.id) || exportArr.includes(importer.id);
+	let importAllowed = isEmpty(exporter.id) || ["true","1",""].includes(importStr) || importArr.includes(exporter.id),
+		exportAllowed = isEmpty(importer.id) || ["true","1",""].includes(exportStr) || exportArr.includes(importer.id);
 	if (importAllowed && exportAllowed) return false;
 	return true;
 }
@@ -813,6 +835,9 @@ function handleDragEnd(e) {
 		pslides.dropIndicator.parentNode.removeChild(pslides.dropIndicator);
 	}
 	e.target.style.display = "";
+	
+	let d = pslides.currentSlide.querySelectorAll("p-dragdrop[p_hiddenclass='forbidden']")
+	for (var i=0; i<d.length; i++) d.removeAttribute("p_hiddenclass");
 }
 
 
