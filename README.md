@@ -41,7 +41,7 @@ The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. Wh
   that will navigate the client to the next (`keysnext`) or previous (`keysback`) slide. If you want to write multiple keys, separate them by spaces.
   ```html
   <p-slide keysback="KeyA ArrowLeft" keysnext="KeyD ArrowRight">
-       ...
+     ...
   </p-slide>
   ```
 - `maxms`: You can define the maximum number of miliseconds that the slide will be presented.
@@ -54,9 +54,9 @@ The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. Wh
   original time frame but that depends on the machine, temporal screen resolution, and browser.
 - `current`: This tag is automatically created by the library. Do not write this in your own HTML code.
   This tag makes it possible for JavaScript to query the slide (DOM element) which the client is currently looking at:
-  ```javascript
-  document.querySelector("p-slide[current]")
-  ```
+```javascript
+document.querySelector("p-slide[current]")
+```
   Nevertheless, it is usually quicker accessing the current slide's DOM element via the `pslides` object: `pslides.currentSlide`.
 #### For JavaScript programming: 
 If you wish to quickly access the DOM element of the current slide in JavaScript, you can either access `pslides.currentSlide` or query `document.querySelector(p-slide[current])`.
@@ -71,16 +71,16 @@ If you wish to quickly access the DOM element of the current slide in JavaScript
 ### `<p-center>`
 This tag allows you to present, for instance, a stimulus at the center of the screen. For instance, you might wish to present a fixation cross in the center of the screen for 300 milliseconds:
 ```html
-  <p-slide maxms="300">
-     <p-center>+</p-center>
-  </p-slide>
+<p-slide maxms="300">
+   <p-center>+</p-center>
+</p-slide>
 ```
 
 ### `<p-upload>`
 This might be the most important tag of them all. After all, you wish to store your data somewhere.
 
 ```html
-  <p-upload>Upload data</p-upload>
+<p-upload>Upload data</p-upload>
 ```
 **Attributes**
 - `format`: Indicate which format the data should be uploaded and stored in (`json` or `csv`). The default is `json`.
@@ -91,8 +91,8 @@ The client will not check the browser console to see if the upload was successfu
 This is why you can include a `<p-message>` on the slide (maybe right below the upload button) which indicates the state of the upload to the client.
 Simply give the `<p-upload>` button a unique `id` (unique to this element in the entire document). 
 ```html
-  <p-upload id="data_upload0" format="csv">Upload data</p-upload>
-  <p-message for="data_upload0">No upload yet</p-message>
+<p-upload id="data_upload0" format="csv">Upload data</p-upload>
+<p-message for="data_upload0">No upload yet</p-message>
 ```
 When the client clicks on the `<p-upload>` element,
 it will message the state of the upload. An error will be written in red font, a successful upload in blue font, and any progress in-between in orange font.
@@ -101,7 +101,7 @@ it will message the state of the upload. An error will be written in red font, a
 If you are running the experiment offline, debug output files or if you would like to allow clients to download their own data, you can use the `<p-download>` tag.
 
 ```html
-  <p-download>Upload data</p-download>
+<p-download>Upload data</p-download>
 ```
 **Attributes**
 - `format`: Indicate which format the data should be downloaded as (`json` or `csv`). The default is `json`.
@@ -111,15 +111,15 @@ If you are running the experiment offline, debug output files or if you would li
 You can include feedback (error or success) with a `<p-message>` tag which indicates the state of the download to the client.
 Simply give the `<p-download>` button a unique `id` (unique to this element in the entire document). 
 ```html
-  <p-download id="data_download0" format="csv">Download data</p-download>
-  <p-message for="data_download0">Not downloaded yet</p-message>
+<p-download id="data_download0" format="csv">Download data</p-download>
+<p-message for="data_download0">Not downloaded yet</p-message>
 ```
 When the client clicks on the `<p-download>` element,
 it will message the state of the download. An error will be written in red font, a successful upload in blue font, and any progress in-between in orange font.
 If you wish to give summary statistics to the participant:
 ```html
-  <p-download id="stats_download1" js="userSummary">Download my test performance</p-download>
-  <p-message for="stats_download1">Not downloaded yet</p-message>
+<p-download id="stats_download1" js="userSummary">Download my test performance</p-download>
+<p-message for="stats_download1">Not downloaded yet</p-message>
 ```
 
 ### `<p-input>`
@@ -129,12 +129,13 @@ This element can be used to implement "checkbox" items (for yes/no questions), "
 In the following example for radio button, we ask for people's gender. They can only pick one response (similar to common `<input type="radio">`. 
 ```html
 <p-input type="radio" name="gender">
-	<label for="gender_male">I am male.</label>
-	<label for="gender_female">I am female.</label>
-	<label for="gender_diverse">I am diverse.</label>
+   <label for="gender_male">I am male.</label>
+   <label for="gender_female">I am female.</label>
+   <label for="gender_diverse">I am diverse.</label>
 </p-input>
 ```
 The attribute `for` in the label will tell PSlides to create an input element:
+
 `<input type="radio" id="gender_male" name="gender">`
 The necessary features are implemented in a MutationObserver so that such items could also be added dynamically.
 **Attributes**
@@ -146,6 +147,7 @@ The necessary features are implemented in a MutationObserver so that such items 
 	<p>How do you feel right now on a scale of 1-9?</p>
     <p-input type="likert" name="feeling" options="1 2 3 4 5 6 7 8 9"></p-input>
 	```
+    Options are here space-separated. They can also be semicolon-separated.
 
 ### `<p-dragdrop>`
 Drag and drop elements within or between containers. For instance, one could sort or rank items.
@@ -158,7 +160,7 @@ Here is an example of a `<p-dragdrop>` element with shuffled child elements:
    <div name="item_D">Item D</div>
 </p-dragdrop>
 ```
-The "Item B" cannot be dragged (because of `draggable="false"`) but its order can be affected by dragging and dropping the other items.
+"Item B" cannot be dragged (because of `draggable="false"`) but its order can be affected by dragging and dropping the other items.
 **Attributes**
 - `import`: Can the `<p-dragdrop>` accept ("import") external draggable elements? It can be "true" if it can or "false" if it cannot.
   The experimenter can also set an element ID or a list of element IDs that the current `<p-dragdrop>` element can import elements from.
@@ -168,7 +170,7 @@ The "Item B" cannot be dragged (because of `draggable="false"`) but its order ca
 An example where one can drag elements from "bucket_1" to "bucket_2" but *not* vice versa:
 ```html
 <p>This container "bucket_1" can export to "bucket_2":</p>
-<p-dragdrop id="bucket_1" export="bucket_2" order="shuffle"> <!-- class="flex-container" -->
+<p-dragdrop id="bucket_1" export="bucket_2" order="shuffle">
    <div name="item_A">Item A</div>
    <div name="item_B">Item B</div>
    <div name="item_C">Item C</div>
@@ -216,16 +218,16 @@ An example where one can drag elements from "bucket_1" to "bucket_2" but *not* v
   ```html
   <p-slide>
      <p-formframe>
-       <ul order="pseudoshuffle(2)">
-          <li>Apples</li>
-          <li group="citrus">Oranges</li>
-          <li>Pears</li>
-          <li group="citrus">Grapefruit</li>
-          <li group="citrus">Lemons</li>
-          <li>Pineapples</li>
-          <li>Plums</li>
-          <li>Pineapples</li>
-       </ul>
+        <ul order="pseudoshuffle(2)">
+           <li>Apples</li>
+           <li group="citrus">Oranges</li>
+           <li>Pears</li>
+           <li group="citrus">Grapefruit</li>
+           <li group="citrus">Lemons</li>
+           <li>Pineapples</li>
+           <li>Plums</li>
+           <li>Pineapples</li>
+        </ul>
      </p-formframe>
   </p-slide>
   ```
