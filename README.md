@@ -4,30 +4,36 @@ A JavaScript library for programming powerful psychological experiments and surv
 ## Include:
 In order to use this library, clone the project, move the files into your preferred directory on the server, and include the following two elements in your document head:
 ```html
-<script src="main.js">
+<script src="main.js"></script>
 <link type="text/css" rel="stylesheet" href="style.css"/>
 ```
 
-If you have stable internet connection, you can also include the current version (here: version 0.2) by including the URL to romans.cc:
+If you have stable internet connection, you can also include the current version (here: version 0.3) by including the URL to romans.cc:
 ```html
-<script src="https://www.romans.cc/lib/pslides/v0.2/main.js">
-<link type="text/css" rel="stylesheet" href="https://www.romans.cc/lib/pslides/v0.2/style.css"/>
+<script src="https://www.romans.cc/lib/pslides/v0.3/main.js"></script>
+<link type="text/css" rel="stylesheet" href="https://www.romans.cc/lib/pslides/v0.3/style.css"/>
 ```
+Because loading the style from the main.js file might cause problems in offline mode (in the `file://` protocol), it is better to just load them separately in the document's head.
 
 ## Goals
-The goals of this library are:
+The goals of PSlides are:
 - allowing a general-purpose application in which you can easily integrate your own features
 - making programming mostly in HTML - and maybe very basic JavaScript
 - making it easy to include your own custom code in the experiment
 - making it easy for anyone who has little programming experience to read the code.
-- Recording data automatically once you give a "name" to an HTML tag: We would rather record things that you are not interested in than you missing data in the end.
+- Recording data automatically once you give a "name" to an HTML tag: We would rather record things that you are not interested in than miss data in the end.
   You can export the results in JSON or CSV.
 - We try to integrate more features over time to make new ways of running experiments easily accessible also to rather inexperienced programmers.
-We try to fulfill these goals by taking over most actions concerning DOM manipulations such as moving to the next or previous slide. Once a slide is loaded, the JavaScript is also loaded from top to bottom, similar to the way a webpage is loaded.
+We try to fulfill these goals by taking over most actions concerning DOM manipulations such as moving to the next or previous slide. 
+Once a slide is loaded, the JavaScript is also loaded from top to bottom, similar to the way a webpage is loaded.
+Experimenters can still integrate their own event listeners
 If you would like to include any custom code for your specific purposes, you can do so without interfering with the library.
+
 
 ## Usage: Programming an experiment or a survey with PSlides
 The library includes custom HTML tags that begin with "p-" like `<p-slide>` which are specific to the PSlides library. There exists pre-configured CSS for these tags.
+
+
 ### `<p-slide>`
 The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. When the URL to the experiment is opened, the library picks the first slide in the document by making only the contents of that slide visible to the client. There are some extra attributes that make it easier for you to navigate the slides.
 **Attributes**
@@ -53,8 +59,7 @@ The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. Wh
   ```
   Nevertheless, it is usually quicker accessing the current slide's DOM element via the `pslides` object: `pslides.currentSlide`.
 #### For JavaScript programming: 
-If you wish to quickly access the DOM element of the current slide in JavaScript, consider `pslides.currentSlide` or `document.querySelector(p-slide[current])`.
-
+If you wish to quickly access the DOM element of the current slide in JavaScript, you can either access `pslides.currentSlide` or query `document.querySelector(p-slide[current])`.
 
 ### `<p-next>` and `<p-back>`
 `<p-next>` and `<p-back>` act as navigation buttons to move to the next or previous slide.
@@ -96,11 +101,12 @@ it will message the state of the upload. An error will be written in red font, a
 If you are running the experiment offline, debug output files or if you would like to allow clients to download their own data, you can use the `<p-download>` tag.
 
 ```html
-  <p-download>Upload data</p-upload>
+  <p-download>Upload data</p-download>
 ```
 **Attributes**
 - `format`: Indicate which format the data should be downloaded as (`json` or `csv`). The default is `json`.
-- `js`: If you wish to download a separate object, indicate it here by writing the name of the variable or constant as a string. This string will be evaluated upon button press.
+- `js`: If you wish to download a separate object, indicate it here by writing the name of the variable or constant as a string. 
+  This string will be evaluated upon button press.
   Remember that when downloading a CSV file of your own object, you need to parse the object as a CSV file. To do so, create an object array and then parse it with `pslides.stringifyCSV(myArrayOfObjects)`.
 You can include feedback (error or success) with a `<p-message>` tag which indicates the state of the download to the client.
 Simply give the `<p-download>` button a unique `id` (unique to this element in the entire document). 
@@ -115,6 +121,67 @@ If you wish to give summary statistics to the participant:
   <p-download id="stats_download1" js="userSummary">Download my test performance</p-download>
   <p-message for="stats_download1">Not downloaded yet</p-message>
 ```
+
+### `<p-input>`
+Some standard HTML elements like `<input>` do not look particularly nice to use in surveys.
+We too often need to program the spacing between input buttons and text or have likert scales. Although not necessary, the `<p-input>` tag is meant to save time in programming.
+This element can be used to implement "checkbox" items (for yes/no questions), "radio" items that only allow a single answer (like gender, or highest educational attainment), likert scales or much more.
+In the following example for radio button, we ask for people's gender. They can only pick one response (similar to common `<input type="radio">`. 
+```html
+<p-input type="radio" name="gender">
+	<label for="gender_male">I am male.</label>
+	<label for="gender_female">I am female.</label>
+	<label for="gender_diverse">I am diverse.</label>
+</p-input>
+```
+The attribute `for` in the label will tell PSlides to create an input element:
+`<input type="radio" id="gender_male" name="gender">`
+The necessary features are implemented in a MutationObserver so that such items could also be added dynamically.
+**Attributes**
+- `type="checkbox"`: Implement checkboxes. 
+- `type="radio"`: Implement radio buttons (only one item can be picked, similar to an old cassette recorder).
+- `type="likert"`: Create a likert scale
+  - `options`: Quickly implement the likert scale with a number rating
+    ```html
+	<p>How do you feel right now on a scale of 1-9?</p>
+    <p-input type="likert" name="feeling" options="1 2 3 4 5 6 7 8 9"></p-input>
+	```
+
+### `<p-dragdrop>`
+Drag and drop elements within or between containers. For instance, one could sort or rank items.
+Here is an example of a `<p-dragdrop>` element with shuffled child elements:
+```html
+<p-dragdrop id="dragdrop_container" order="shuffle">
+   <div name="item_A">Item A</div>
+   <div name="item_B" draggable="false">Item B</div>
+   <div name="item_C">Item C</div>
+   <div name="item_D">Item D</div>
+</p-dragdrop>
+```
+The "Item B" cannot be dragged (because of `draggable="false"`) but its order can be affected by dragging and dropping the other items.
+**Attributes**
+- `import`: Can the `<p-dragdrop>` accept ("import") external draggable elements? It can be "true" if it can or "false" if it cannot.
+  The experimenter can also set an element ID or a list of element IDs that the current `<p-dragdrop>` element can import elements from.
+- `export`: This is the opposite of the `import` attribute. One can disallow exporting elements to other `<p-dragdrop>` containers by setting `export="false"`.
+  One can also decide specifically to which container one could export elements to by creating a list of unique element IDs.
+- `intraport`: When the movement of elements within the `<p-dragdrop>` container should be prohibited, one can set `intraport="false"`.
+An example where one can drag elements from "bucket_1" to "bucket_2" but *not* vice versa:
+```html
+<p>This container "bucket_1" can export to "bucket_2":</p>
+<p-dragdrop id="bucket_1" export="bucket_2" order="shuffle"> <!-- class="flex-container" -->
+   <div name="item_A">Item A</div>
+   <div name="item_B">Item B</div>
+   <div name="item_C">Item C</div>
+   <div name="item_D">Item D</div>
+</p-dragdrop>
+<p>This container "bucket_2" can only import items from but not export items to "bucket_1":</p>
+<p-dragdrop id="bucket_2" export="false">
+   <div name="item_1">Item 1</div>
+   <div name="item_2">Item 2</div>
+   <div name="item_3">Item 3</div>
+</p-dragdrop>
+```
+
 
 ### General attributes
 - `jsfill`: This will fill the HTML element with the value of any JavaScript expression provided.
