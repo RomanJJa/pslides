@@ -777,7 +777,13 @@ pslides.isDropForbidden = function(exporter, importer) {
 	// pslides.isDropForbidden(exporter, importer)
 	// import: false,
 	// export: false,
-	if (!isDOMElement(exporter) || !isDOMElement(importer) || exporter===importer) return false;
+	if (!isDOMElement(exporter) || !isDOMElement(importer)) return false;
+	let intraportStr = ifNullStr(importer.getAttribute("intraport")).toLowerCase();
+	if (exporter===importer && ["false","0"].includes(intraportStr)) {
+		return true;
+	} else if (exporter===importer) {
+		return false;
+	}
 	
 	let importStr = importer.getAttribute("import"),
 		exportStr = exporter.getAttribute("export");
@@ -3083,7 +3089,6 @@ window.onload = function() {
 	// load experiment information: start_session.php
 	createSubjCodes();
 	pslides.setLanguage();
-	
 	
 	// initialize the array for querySelectorAll()
 	var d = [];
