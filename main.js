@@ -753,28 +753,47 @@ function handleDragStart(e) {
 	}
 	shapeDropindicator(e);
 	
-	/*function forbidDragdrops(event) {
-		let exporter = pslides.queryParents(event.target, query="p-dragdrop"),
+	// BUG HERE!!!
+	function CSSforbidDragdrops(event) {
+		let exporter = pslides.queryParents(event.currentTarget, query="p-dragdrop"),
 			exporterID = exporter.id,
 			exportAttr = exporter.getAttribute("export"),
 			forbidExport = ["false","0"].includes(exportAttr),
 			exportIDs = splitWhitespace(ifNullStr(exportAttr).trim()).filter((x) => x!==""),
-			importers = pslides.currentSlide.querySelectorAll("p-dragdrop[import]")
+			importers = pslides.currentSlide.querySelectorAll("p-dragdrop");
 		
 		for (var i=0; i<importers.length; i++) {
 			let importAttr = importers[i].getAttribute("import"),
 				forbidImport = ["false","0"].includes(importAttr),
 				importIDs  = splitWhitespace(ifNullStr(importAttr).trim()).filter((x) => x!=="");
+			// if forbidden:
+			//opacity: 0.8;
+			//filter: grayscale(60%);
+			//cursor: not-allowed;
 			
+			if (pslides.isDropForbidden(exporter, importers[i])) {
+				importers[i].setAttribute("p_hiddenclass","forbidden")
+				console.log("importer set to \"forbidden\".\nimporter:", importers[i],"exporter:", exporter);
+			}
+			/*
 			if (importers[i]!==exporter && (forbidExport || forbidImport)) {
 				importers[i].setAttribute("p_hiddenclass","forbidden")
+				//importers[i].style.opacity="0.8";
+				//importers[i].style.filter="grayscale(60%)";
+				//importers[i].style.cursor="not-allowed";
+				console.log("importer set to \"forbidden\":", importers[i]);
 			} else if (importers[i] !== exporter && 
-			           (exportIDs.includes(importers[i].id) || importIDs.includes(importers[i].id))) {
+			           (!exportIDs.includes(importers[i].id) || !importIDs.includes(importers[i].id))) {
 				importers[i].setAttribute("p_hiddenclass","forbidden")
+				//importers[i].style.opacity="0.8";
+				//importers[i].style.filter="grayscale(60%)";
+				//importers[i].style.cursor="not-allowed";
+				console.log("importer set to \"forbidden\" due to IDs:", importers[i]);
 			}
+			*/
 		}
 	}
-	forbidDragdrops(e)*/
+	CSSforbidDragdrops(e);
 		
 	// element style:
 	let elRect   = e.target.getBoundingClientRect();
@@ -837,7 +856,12 @@ function handleDragEnd(e) {
 	e.target.style.display = "";
 	
 	let d = pslides.currentSlide.querySelectorAll("p-dragdrop[p_hiddenclass='forbidden']")
-	for (var i=0; i<d.length; i++) d.removeAttribute("p_hiddenclass");
+	for (var i=0; i<d.length; i++) {
+		d[i].removeAttribute("p_hiddenclass");
+		//d[i].style.opacity="";
+		//d[i].style.filter="";
+		//d[i].style.cursor="";
+	}
 }
 
 
@@ -994,7 +1018,7 @@ function handleDrop(e) {
 
 
 /////////////////////////////////////////////////////////////////
-//                Note listeners
+//                Node listeners
 /////////////////////////////////////////////////////////////////
 	
 	// CSS match: function(node)
@@ -1092,13 +1116,14 @@ function handleDrop(e) {
 	
 	pslides.queryParents = function(node, query, start=1, limit=Infinity) {
 		let iterator = 0;
-		for (var i=0; i<=start; i++) node = node.parentNode;
-		while(node!==null && iterator<limit) {
+		for (var i=0; i<start; i++) node = node.parentNode;
+		while(node!==null && node !== document && iterator<limit) {
+			//console.log("pslides.queryParents() node: ", node)
 			if (node.matches(query)) return node;
 			node = node.parentNode;
 			iterator++;
 		}
-		if (node.matches(query)) return node;
+		if (node !== document && node.matches(query)) return node;
 		return null;
 	}
 	

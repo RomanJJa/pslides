@@ -205,10 +205,9 @@ p-response, p-records, p-var, p-data {
 	display: none;
 	white-space: pre;
 }
-[forbidden], [forbidden=true], [forbidden=1],
-[p_hiddenclass="forbidden"] {
-	opacity: 0.8;
-	filter: grayscale(60%);
+[forbidden], [forbidden="true"], [forbidden="1"], [p_hiddenclass="forbidden"] {
+	opacity: 0.6;
+	filter: grayscale(10%);
 	cursor: not-allowed;
 }
 [p_hiddenclass="hidden"] {
