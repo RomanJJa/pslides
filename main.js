@@ -26,8 +26,6 @@
 //        p-slide attribute: keysnext: Keyboard keys that introduce next p-slide "none", "all", "[32,34]" --> eval
 //        p-slide attribute: fullscreen: false (gehe aus dem Vollbildmodus), true (Vollbildmodus)
 //  
-//      X p-while: for adaptive tests
-//      X p-while attribute: crit      --> eval
 //
 //        var attribute: 
 //      
@@ -153,6 +151,7 @@ const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null
 				 lastSubmission: Number(new Date())*2,
 				 key: {down:{t:[],k:[]},up:{t:[],k:[]}}, visibility : {t:[],state:[]},
 				 pointer: {t:[],x:[],y:[],f:[],rx:[],ry:[],ang:[],el0:[],el1:[],type:[]}, activePointers: new Map(),
+				 dragdrop: {t:[], dragged:[], container0:[], container1:[], order1:[]},
                  nextSlideKeys: [], backSlideKeys: [], slideNumber: 0, isClickedDown: false,
 				 serverSubjPath: "access/subj/", serverRootPath: "/u", 
 				 eventListeners: {onmousedown:null,onmouseup:null,onmousemove:null,
@@ -728,6 +727,9 @@ async function unpackPData(node) {
 /////////////////////////////////////////////////////////////////
 
 function handleDragStart(e) {
+	
+	recordPointerEvent(e);
+	
 	if (isDOMElement(pslides.dropIndicator)) {
 		pslides.dropIndicator.style.width = "0px";
 	}
@@ -849,6 +851,7 @@ pslides.isDropForbidden = function(exporter, importer) {
 }
 
 function handleDragEnd(e) {
+	recordPointerEvent(e);
 	e.target.removeAttribute("dragging");
 	if (pslides.dropIndicator !== null && pslides.dropIndicator.parentNode) {
 		pslides.dropIndicator.parentNode.removeChild(pslides.dropIndicator);
@@ -865,7 +868,23 @@ function handleDragEnd(e) {
 }
 
 
+function recordDragdrop(event) {
+	let time = Number(new Date());
+	pslides.dragdrop.t.push(time - pslides.slideStartTime)
+	pslides.dragdrop.container0.push(nameNode(event.target))
+	pslides.dragdrop.container1.push(nameNode(event.currentTarget))
+	pslides.dragdrop.dragged.push(nameNode(event.target))
+	pslides.dragdrop.dragged.push(nameNodeChildren(event.target))
+	
+	console.log("recordDragdrop(event)", event);
+	//: Array(0), dragged: Array(0), container0: Array(0), container1: Array(0), order1: Array(0)}
+}
+
+
 function handleDragOver(e) {
+	let time = Number(new Date());
+	
+	//recordDragdrop(e);
 	
 	// private function to get the coordinates of the element's center
 	function elementCenterCoor(node) {
@@ -914,7 +933,7 @@ function handleDragOver(e) {
 	if (draggedItem === null) return;
 	if (hoveredElement === pslides.dropIndicator) return;
 	let targetItem = null;
-	
+		
 	// Now we are within the dragdrop box.
 	// get target item:
 	if (draggedItem === hoveredElement) {
@@ -965,6 +984,34 @@ function handleDragOver(e) {
 		} else {
 			container.insertBefore(pslides.dropIndicator, targetItem);
 		}
+	}
+	
+	
+	// Record the drag and drop processes:
+	let prevContainerNames = pslides.dragdrop.container1;
+	let lastContainerName  = prevContainerNames[prevContainerNames.length-1];
+	let currContainerName  = nameNode(container);
+	let draggedName        = nameNode(draggedItem);
+	let currOrder          = nameNodeChildren(container);
+	let lastOrder          = [];
+	let prevLength         = pslides.dragdrop.order1.length;
+	if (pslides.dragdrop.order1.length>0) {
+		lastOrder = pslides.dragdrop.order1[pslides.dragdrop.order1.length-1];
+	}
+	var i=0; 
+	while (i<currOrder.length) {
+		if (currOrder[i]=="p-dropindicator") currOrder[i] = draggedName;
+		if (container.children[i] === draggedItem) currOrder.splice(i, 1);
+		i++;
+	}
+	if (prevLength==0 || currContainerName!==lastContainerName || 
+		currOrder.join(" ") !== lastOrder.join(" ")) {
+		pslides.dragdrop.t.push(time - pslides.slideStartTime)
+		pslides.dragdrop.container0.push(nameNode(draggedItem.parentElement))
+		pslides.dragdrop.container1.push(currContainerName)
+		pslides.dragdrop.order1.push(currOrder)
+		pslides.dragdrop.dragged.push(draggedName)
+		console.log("recordDragdrop(event)", event);
 	}
 }
 
@@ -2733,7 +2780,7 @@ document.addEventListener("mozfullscreenchange", (event) => {handleFullscreenCha
 document.addEventListener("MSFullscreenChange", (event) => {handleFullscreenChange(event)});
 
 
-window.onkeydown = (event) => {
+window.addEventListener("keydown", (event) => {
 	var eventTime = new Date();
 	if (!event.repeat) {
 		pslides.key.down.t.push(eventTime - pslides.slideStartTime)
@@ -2742,9 +2789,9 @@ window.onkeydown = (event) => {
 			pslides.eventListeners.onkeydown(event);
 		}
 	}
-}
+})
 
-window.onkeyup = (event) => {
+window.addEventListener("keyup", (event) => {
 	// response time is always since slide onset!!!
 	var eventTime = new Date();
 	if (!event.repeat) {
@@ -2766,7 +2813,7 @@ window.onkeyup = (event) => {
 	} else {
 		console.error("Duplicate \"keyup\" event: Key has already been released.")
 	}
-}
+})
 
 
 pslides.getKeys = function(slidesback=-1) {
@@ -2803,17 +2850,17 @@ pslides.matchKeys = function(code="", slidesback=-1) {
 	return res;
 }
 
-function stringifyTargetElement(target) {
+function element2CSSmatch(target) {
 	var el = target.tagName.toLowerCase();
 	if (target.id!=="") { // id
-		el = el+"[id="+target.id+"]";
-	} else if (![undefined,null,""].includes(target.getAttribute("for"))) {
+		el = el+"#"+target.id;
+	} else if (!isEmpty(target.getAttribute("for"))) {
 		el = el+"[for="+target.getAttribute("for")+"]";
-	} else if (![undefined,null,""].includes(target.getAttribute("name"))) { // name
+	} else if (!isEmpty(target.getAttribute("name"))) { // name
 		el = el+"[name="+target.getAttribute("name")+"]";
-	} else if (![undefined,null,""].includes(target.getAttribute("type"))) { // type
+	} else if (!isEmpty(target.getAttribute("type"))) { // type
 		el = el+"[type="+target.getAttribute("type")+"]";
-	} else if (![undefined,null,""].includes(target.className)) { // class
+	} else if (!isEmpty(target.className)) { // class
 		el = el+"[class="+target.className+"]";
 	}
 	return el;
@@ -2965,10 +3012,24 @@ function recordPointerEvent(event) {
 	//console.log("event ended? ",["pointerup","pointercancel","mouseup","touchend","touchcancel"].includes(event.type))
 	//console.log("pslides.activePointers: ", pslides.activePointers)
 	
-	const identifier = pointer.pointerId,
-		  pointerData = pslides.activePointers.get(identifier);
+	const identifier = pointer.pointerId;
+	let pointerData = pslides.activePointers.get(identifier);
+	if (event.type==="contextmenu") {
+		pointerData = {
+			t:    [time], // Store timestamp as Date object
+			x:    [Math.round(event.clientX)],
+			y:    [Math.round(event.clientY)],
+			rx:   [Math.round(event.radiusX)],
+			ry:   [Math.round(event.radiusY)],
+			f:    [Math.round(event.force*1000)],
+			ang:  [Math.round(event.rotationAngle)],
+			type: event.pointerType+"right",
+			el0:  nameNode(event.target),
+		}
+	}
+	
 	//console.log("pointerData", pointerData)
-	if (["pointerdown","mousedown","touchstart"].includes(event.type) || pointerData === undefined) {
+	if (["pointerdown","mousedown","touchstart","dragstart"].includes(event.type) || isEmpty(pointerData)) {
 		//console.log("Pointer started!");
 		// Initialize arrays for a new pointer
 		pslides.activePointers.set(identifier, {
@@ -2980,14 +3041,16 @@ function recordPointerEvent(event) {
 			f:    [Math.round(event.force*1000)],
 			ang:  [Math.round(event.rotationAngle)],
 			type: event.pointerType,
-			el0:  stringifyTargetElement(event.target),
+			el0:  nameNode(event.target),
 		});
 		if (event.type==="mouse") pslides.isClickedDown = true;
-	} else if (["pointermove","mousemove","touchmove"].includes(event.type)) {
+	} else if (["pointermove","mousemove","touchmove","dragover"].includes(event.type)) {
 		//console.log("Pointer moves!")
 		const lastT = lastArrayValue(pointerData.t);
 		if (((event.type==="mouse" && pslides.isClickedDown) || event.type!=="mouse") && 
 		    lastT !== undefined && time - lastT >= pslides.settings.pointerTemporalResolution) {
+			
+			// console.log("event:", event)
 			
 			// Append new data to existing arrays
 			pointerData.t.push(time);
@@ -2998,7 +3061,10 @@ function recordPointerEvent(event) {
 			pointerData.ry.push(Math.round(event.radiusY));
 			pointerData.ang.push(Math.round(event.rotationAngle));
 		}
-	} else if (["pointerup","pointercancel","mouseup","touchend","touchcancel"].includes(event.type)) {
+	} else if (["pointerup","pointercancel","mouseup","touchend","touchcancel","drop","dragend","contextmenu"].includes(event.type)) {
+		
+		console.log("end event:", event);
+		
 		//console.log("Pointer ended!");
 		// Append final data
 		pointerData.t.push(time);
@@ -3028,8 +3094,13 @@ function recordPointerEvent(event) {
 		pslides.pointer.ry.push(pointerData.ry);
 		pslides.pointer.ang.push(pointerData.ang);
 		pslides.pointer.el0.push(pointerData.el0);
-		pslides.pointer.el1.push(stringifyTargetElement(event.target));
-		pslides.pointer.type.push(pointerData.type);
+		pslides.pointer.el1.push(nameNode(event.target));
+		
+		if (["drop","dragend"].includes(event.type)) {
+			pslides.pointer.type.push("dragdrop");
+		} else {
+			pslides.pointer.type.push(pointerData.type);
+		}
 		// set a pointer type! mouse/touch/pen
 		
 		// Remove from active touches
@@ -3078,7 +3149,6 @@ document.addEventListener("focus", (event) => {
 })
 
 document.addEventListener("pointerdown", (event) => {
-	var time = new Date();
 	if (!event.repeat) {
 		recordPointerEvent(event);
 		if (typeof pslides.eventListeners.onpointerdown == "function") {
@@ -3088,7 +3158,6 @@ document.addEventListener("pointerdown", (event) => {
 })
 
 document.addEventListener("pointermove", (event) => {
-	var time = new Date();
 	if (!event.repeat) {
 		recordPointerEvent(event);
 		if (typeof pslides.eventListeners.onpointermove == "function") {
@@ -3131,6 +3200,11 @@ pslides.beforeunload = function(event) {
 }
 
 window.addEventListener("beforeunload", pslides.beforeunload)
+
+window.addEventListener("contextmenu", function (event) {
+	recordPointerEvent(event);
+})
+
 
 window.onload = function() {
 	// fill in external data
@@ -3623,56 +3697,47 @@ pslides.camelCase = function(x) {
 }
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
 function nameNode(node) {
 	if (!isDOMElement(node)) return null;
-	var type = ifNullStr(node.getAttribute("type"),"NA").toLowerCase(),
+	var type = ifNullStr(node.getAttribute("type")).toLowerCase(),
 		tag  = ifNullStr(node.tagName,"NA").toLowerCase(),
-		id   = node.id.replaceAll(" ","_"),
-		name = ifNullStr(node.getAttribute("name")).replaceAll(" ","_"),
-		cl   = ifNullStr(node.className).replaceAll(" ","_");
+		id   = node.id.replaceAll(/\s+/g,"_"),
+		name = ifNullStr(node.getAttribute("name")),
+		cl   = ifNullStr(node.className).replaceAll(/\s+/g,"\.");
 	
-	if (!isEmpty(id)) return "#"+id;
+	let slide = pslides.queryParents(node, query="p-slide", start=0, limit=Infinity),
+		nodeText = node.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!=="");
 	
-	if (!isEmpty(name)) {
-		name = "name="+name
-	} else {
-		name="";
-	}
+	if (!isDOMElement(slide)) slide = document.body;
 	
-	if (name=="" && !isEmpty(cl)) {
-		cl = "class="+cl
-	} else {
-		cl="";
-	}
+	if (id!=="") id = "#"+id;
+	if (cl!=="") cl = "."+cl;
+	if (name!=="") name = "[name=\""+escapeString(name)+"\"]";
+	if (type!=="") type = "[type=\""+escapeString(type)+"\"]";
 	
-	let slide = pslides.queryParents(node, query="p-slide", start=1, limit=Infinity),
-		slideText = slide.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!==""),
-		nodeText = node.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!==""),
-		forText = slide.querySelector("[for=\""+escapeString(node.id)+"\"]");
-	if (nodeText.length == 0 && !isEmpty(node.id) && forText!==null) {
-		nodeText = forText.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!=="");
-	}
-	let i = 0;
-	while (nodeText.length>8 && i<nodeText.length) {
-		if (slideText.filter(x => x.toLowerCase() === nodeText[i].toLowerCase()).length>1) {
-			nodeText = nodeText.filter(x => x.toLowerCase() !== nodeText[i].toLowerCase())
-		} else {
-			i++;
+	if (id  !=="" && slide.querySelectorAll(id).length==1) return id;
+	if (name!=="" && slide.querySelectorAll(tag+name).length==1) return tag+name;
+	if (type!=="" && slide.querySelectorAll(tag+type).length==1) return tag+type;
+	if (cl  !=="" && slide.querySelectorAll(tag + cl).length==1) return tag+cl;
+	if (slide !== document.body) {
+		let slideText = slide.textContent.split(/[\n \t\-\?\,_\!\;]/g).filter(x => x!=="");
+		let i = 0;
+		while (nodeText.length>8 && i<nodeText.length) {
+			if (slideText.filter(x => x.toLowerCase() === nodeText[i].toLowerCase()).length>1) {
+				nodeText = nodeText.filter(x => x.toLowerCase() !== nodeText[i].toLowerCase())
+			} else {
+				i++;
+			}
 		}
 	}
 	
-	if (nodeText.length>0) return tag+".text="+pslides.camelCase(nodeText);
-	return [tag, cl, name].filter(x => !isEmpty(x)).join(".");
+	if (nodeText.length>0 && node.querySelectorAll("*").length<8) {
+		return tag+":\""+escapeString(pslides.camelCase(nodeText))+"\"";
+	}
+	return [tag, cl, id, name, type].filter(x => !isEmpty(x)).join("");
 }
 
+// use nameNode() on all children of an input node:
 function nameNodeChildren(node) {
 	let children = node.children, res = [];
 	for (var i=0; i<children.length; i++) {
@@ -3680,8 +3745,6 @@ function nameNodeChildren(node) {
 	}
 	return res;
 }
-
-
 
 // capture values from elements into an object "obj"
 function recordElement(node, obj) {
@@ -3795,7 +3858,10 @@ function changeSlide(next=1) {
 	var oldSlide = pslides.currentSlide; // document.querySelector("p-slide[current]");
 	var d = oldSlide.querySelectorAll("input,textarea:not(p-input textarea),select:not(p-input select),p-gencode>span,p-var,p-dragdrop"), // [name]:not(p-records>[name],p-input), input:not(p-input input)
 		tmpRes = {content:{}, variables:{}, order:{}, records:{}, 
-		          key: pslides.key, pointer: pslides.pointer, visibility: pslides.visibility};
+		          key: pslides.key, 
+				  pointer: pslides.pointer, 
+				  dragdrop: pslides.dragdrop, 
+				  visibility: pslides.visibility};
 	//console.error("tmpRes.mouse: ", tmpRes.mouse)
 	for (var i=0; i<d.length; i++) {
 		tmpRes = recordElement(d[i], tmpRes);
@@ -3844,6 +3910,7 @@ function changeSlide(next=1) {
 	// get the current instance of pslides into the outObj !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	
 	pslides.pointer    = {t:[],x:[],y:[],f:[],rx:[],ry:[],ang:[],el0:[],el1:[],type:[]};
+	pslides.dragdrop   = {t:[],dragged:[],container0:[],container1:[],order1:[]};
 	pslides.key        = {up:{t:[],k:[]}, down:{t:[],k:[]}};
 	pslides.visibility = {t:[], state:[]};
 	
