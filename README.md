@@ -184,7 +184,7 @@ An example where one can drag elements from "bucket_1" to "bucket_2" but *not* v
 </p-dragdrop>
 ```
 
-### p-subjcode
+### `<p-subjcode>`
 If you, for instance, plan to run longitudinal studies, you might want to present participants 
 a way to "log in" later on into the experiment. In this case, you might want to present to them
 their participant code. You can do so by showing them the `<p-subjcode>` tag.
