@@ -1,5 +1,5 @@
-# PSlides: An HTML framework for online experiments and surveys
-PSlides is a JavaScript library for programming powerful psychological experiments and surveys. PSlides makes it easy to integrate anything that HTML and JavaScript have to offer, making it an extremely flexible framework. The HTML code is comprehensible also to inexperienced coders by introducing custom HTML5 tags for common elements like slides, likert scales, response buttons. Dynamic experiments require only basic vanilla JavaScript, e.g., by indexing stimuli from a stimulus set. Simple questionnaires require no JavaScript. But also complex experimental setups (touch events, swiping, etc.) can be implemented within this flexible framework.
+# PSlides: A flexible JavaScript library for online experiments and surveys
+A JavaScript library for programming powerful psychological experiments and surveys. PSlides makes it easy to integrate anything that HTML and vanilla JS have to offer.
 
 ## Include:
 In order to use this library, clone the project, move the files into your preferred directory on the server, and include the following two elements in your document head:
@@ -184,6 +184,21 @@ An example where one can drag elements from "bucket_1" to "bucket_2" but *not* v
 </p-dragdrop>
 ```
 
+### p-subjcode
+If you, for instance, plan to run longitudinal studies, you might want to present participants 
+a way to "log in" later on into the experiment. In this case, you might want to present to them
+their participant code. You can do so by showing them the `<p-subjcode>` tag.
+```html
+<p-subjcode></p-subjcode>
+```
+***Attributes***
+- `copyable`: If you simply write the attribute `copyable` without a value, you can provide a 
+  button to participants with which they can copy their participant code.
+  ```html
+  <p-subjcode copyable></p-subjcode>
+  ```
+  If you set `copyable="false"` or remove the attribute, only the participant's code will be 
+  displayed.
 
 ### General attributes
 - `jsfill`: This will fill the HTML element with the value of any JavaScript expression provided.
@@ -200,11 +215,11 @@ An example where one can drag elements from "bucket_1" to "bucket_2" but *not* v
   overwriting any inner HTML it has (above: `<b>Nothing</b> to see here!`).
   This can be useful to prevent reusing HTML code which makes the HTML code easier to read.
 - `order`: order at which the child elements are displayed. By default, child elements are displayed sequentially (in the order in which they are written in HTML).
-  However, it is also possible to shuffle the child elements by setting `order="shuffle"`.
+  However, it is also possible to shuffle the child elements by setting `order="shuffle"`:
   ```html
   <p-slide>
      <p-formframe>
-       <ul order="pseudoshuffle(2)">
+       <ul order="shuffle">
           <li>Apples</li>
           <li>Oranges</li>
           <li>Pineapples</li>

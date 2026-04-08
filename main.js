@@ -1132,13 +1132,16 @@ function handleDrop(e) {
 		"p-gencode,p-subjcode": function(node) {
 			// also set default values
 			// var node = document.querySelector("p-subjcode")
-			var n      = ifNullStr(node.getAttribute("n"),"3"), 
+			let n      = ifNullStr(node.getAttribute("n"),"3"), 
 				chunks = ifNullStr(node.getAttribute("chunks"),"3"), 
 				sep    = ifNullStr(node.getAttribute("sep"),"-"),
 				code   = "?";
 			
 			if (node.tagName==="P-SUBJCODE") {
-				code = document.querySelector("meta[name='pslides:subj']").getAttribute("content");
+				let subjmeta = document.head.querySelector("meta[name='pslides:subj']");
+				if (!isDOMElement(subjmeta)) createSubjCodes();
+				subjmeta = document.head.querySelector("meta[name='pslides:subj']");
+				code = subjmeta.getAttribute("content");
 			} else if (node.tagName === "P-GENCODE") {
 				code = generateCode(n=Number(n), chunks=Number(chunks), set=36, sep=sep)
 			}
@@ -1148,15 +1151,18 @@ function handleDrop(e) {
 				res+="<button style='padding:0;line-height:0;font-size:130%' onclick='handleGenCode(this.parentElement)'>&#8635;</button>"; // style='font-size:130%;padding-top:0;padding-bottom:0'
 			} 
 			// res+="<button onclick='copyInnerHTML(this.parentElement.firstChild)'><span style='font-size:.88em;margin-right:.12em;position:relative;top:-.24em;left:-.12em'>📄<span style='position:absolute;top:.24em;left:.24em'>📄</span></span></button>"
-			res+="<button onclick='copyInnerHTML(this.parentElement.firstChild)'>"+
-			"<svg alt='COPY' fill='#000000' height='800px' width='800px' version='1.1' viewBox='0 0 330 330' preserveAspectRatio='none' xml:space='preserve'>"+"<g>"+
-				"<path d='M35,270h45v45c0,8.284,6.716,15,15,15h200c8.284,0,15-6.716,15-15V75c0-8.284-6.716-15-15-15h-45V15"+
-					"c0-8.284-6.716-15-15-15H35c-8.284,0-15,6.716-15,15v240C20,263.284,26.716,270,35,270z M280,300H110V90h170V300z M50,30h170v30H95 "+
-					"c-8.284,0-15,6.716-15,15v165H50V30z'/>"+
-				"<path d='M155,120c-8.284,0-15,6.716-15,15s6.716,15,15,15h80c8.284,0,15-6.716,15-15s-6.716-15-15-15H155z'/>"+
-				"<path d='M235,180h-80c-8.284,0-15,6.716-15,15s6.716,15,15,15h80c8.284,0,15-6.716,15-15S243.284,180,235,180z'/>"+
-				"<path d='M235,240h-80c-8.284,0-15,6.716-15,15c0,8.284,6.716,15,15,15h80c8.284,0,15-6.716,15-15C250,246.716,243.284,240,235,240z'/>"+
-			"</g></svg>"+"</button>"
+			let isCopyable = node.getAttribute("copyable");
+			if (isCopyable!==null && !["0","false"].includes(isCopyable.trim().toLowerCase())) {
+				res+=" <button onclick='copyInnerHTML(this.parentElement.firstChild)'>"+
+				"<svg alt='COPY' fill='#000000' height='800px' width='800px' version='1.1' viewBox='0 0 330 330' preserveAspectRatio='none' xml:space='preserve'>"+"<g>"+
+					"<path d='M35,270h45v45c0,8.284,6.716,15,15,15h200c8.284,0,15-6.716,15-15V75c0-8.284-6.716-15-15-15h-45V15"+
+						"c0-8.284-6.716-15-15-15H35c-8.284,0-15,6.716-15,15v240C20,263.284,26.716,270,35,270z M280,300H110V90h170V300z M50,30h170v30H95 "+
+						"c-8.284,0-15,6.716-15,15v165H50V30z'/>"+
+					"<path d='M155,120c-8.284,0-15,6.716-15,15s6.716,15,15,15h80c8.284,0,15-6.716,15-15s-6.716-15-15-15H155z'/>"+
+					"<path d='M235,180h-80c-8.284,0-15,6.716-15,15s6.716,15,15,15h80c8.284,0,15-6.716,15-15S243.284,180,235,180z'/>"+
+					"<path d='M235,240h-80c-8.284,0-15,6.716-15,15c0,8.284,6.716,15,15,15h80c8.284,0,15-6.716,15-15C250,246.716,243.284,240,235,240z'/>"+
+				"</g></svg>"+"</button>"
+			}
 			node.innerHTML=res;
 		}
 	}
@@ -2303,7 +2309,7 @@ function downloadObj(node=null, x=null, filename=null) {
 // fill attributes with JS (jsattr): insert JSON object with {"attr":value, ...}
 
 function evalJSAttr(node) {
-	if (node.tagName==="P-SUBJCODE") node.querySelector("span").innerHTML = extractParameter("subj").subj
+	if (node.tagName==="P-SUBJCODE") node.querySelector("span").innerHTML = extractParameter("subj").subj // 
 	var attrs  = node.getAttribute("jsattr");
 	if (attrs !== null && attrs !== "") {
 		attrs = attrs.trim()
