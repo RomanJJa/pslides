@@ -3458,7 +3458,7 @@ function renderSlide(slide) {
 		// First, move to the next node and try to render
 		
 		// Now process the next element:
-		evalJSAttr(d);
+		//evalJSAttr(d);
 		//console.log("evalJSAttr()", stringifyNodeTag(d))
 		
 		
@@ -3519,6 +3519,11 @@ function hasParentAttribute(node, attr="p_hiddenclass", value="never") {
 function prepareSlide(slide) {
 	// fullscreen?
 	//evalJSAttr(slide)
+	
+	// evaluate JS attributes:
+	let js = slide.querySelectorAll("p-subjcode,[jsattr],[jsfill]");
+	for (var i=0;i<js.length;i++) evalJSAttr(js[i]);
+
 	renderSlide(slide);
 	var attr = slide.attributes, counter=outObj.slides.length-1,
 		fullscreen_var = null, maxms_var = Infinity;
