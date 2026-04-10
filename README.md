@@ -219,9 +219,9 @@ that accepts JavaScript. Here is an example:
 <p-elif cond="score > 5">
    <p>Very well done!</p>
 </p-elif>
-<p-elif cond="score >= 0">
-   <p>We must practice some more!</p>
 <p-else>
+   <p>We must practice some more!</p>
+</p-else>
 ```
 You can use `<p-if>`, `<p-elif>`, and `<p-else>` within `<p-slide>` to manage slide contents 
 or across many slides to manage which slide the user will see next.
