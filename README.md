@@ -205,7 +205,7 @@ If you would like to present content depending on previous input or other JavaSc
 you can concatinate `<p-if>`, `<p-elif>`, and `<p-else>` similar to any other programming language.
 Suppose that you ran a test and estimated the test score using a JavaScript variable.
 You could now display different content within the slide depending on a condition attribute `cond`
-that accepts JavaScript. Here is an example:
+that accepts executable JavaScript returning true or false. Here is an example:
 ```html
 <script>
    let score = 9;
@@ -225,11 +225,14 @@ that accepts JavaScript. Here is an example:
 ```
 You can use `<p-if>`, `<p-elif>`, and `<p-else>` within `<p-slide>` to manage slide contents 
 or across many slides to manage which slide the user will see next.
+A sequence of conditionals does not have to end with a `<p-else>` node, but it must start with
+a `<p-if>` element because that element triggers an evaluation process.
 
 ### `<p-while>`
 If you have an array over which to loop without repeating the same set of slides over and over again,
 you can use a `<p-while>` element. Then define the `cond` attribute to describe under which condition
-this while loop will keep executing:
+this while loop will keep executing. Just as in `<p-if>`, the attribute `cond` must contain executable
+JavaScript that returns a true or false value:
 ```html
 <script>
    let sentence = ["You","can","keep","reading","a","new","word","until","the","sentence","is","over."];
