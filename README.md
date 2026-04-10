@@ -200,6 +200,55 @@ their participant code. You can do so by showing them the `<p-subjcode>` tag.
   If you set `copyable="false"` or remove the attribute, only the participant's code will be 
   displayed.
 
+### `<p-if> <p-elif> <p-else>`
+If you would like to present content depending on previous input or other JavaScript variables,
+you can concatinate `<p-if>`, `<p-elif>`, and `<p-else>` similar to any other programming language.
+Suppose that you ran a test and estimated the test score using a JavaScript variable.
+You could now display different content within the slide depending on a condition attribute `cond`
+that accepts JavaScript. Here is an example:
+```html
+<script>
+   let score = 9;
+</script>
+<p-if cond="typeof score !== 'number' || score < 0">
+   <p><b>Come on!</b> Give me an actual score - a positive number!</p>
+</p-if>
+<p-elif cond="score > 9">
+   <p><b>Wow!</b> you had a perfect score!</p>
+</p-elif>
+<p-elif cond="score > 5">
+   <p>Very well done!</p>
+</p-elif>
+<p-elif cond="score >= 0">
+   <p>We must practice some more!</p>
+<p-else>
+```
+You can use `<p-if>`, `<p-elif>`, and `<p-else>` within `<p-slide>` to manage slide contents 
+or across many slides to manage which slide the user will see next.
+
+### `<p-while>`
+If you have an array over which to loop without repeating the same set of slides over and over again,
+you can use a `<p-while>` element. Then define the `cond` attribute to describe under which condition
+this while loop will keep executing:
+```html
+<script>
+   let sentence = ["You","can","keep","reading","a","new","word","until","the","sentence","is","over."];
+   let Iterator = 0;
+</script>
+<p-while cond="Iterator < sentence.length>">
+   <p-slide maxms="500">
+      <p-center jsfill="sentence[Iterator]">No content</p-center>
+   </p-slide>
+</p-while>
+<p-slide>
+   <p-center><b>Sentence over.</b></p-center>
+</p-slide>
+```
+We are making use of the attribute `jsfill` in the `<p-center>` element to insert contents 
+from the JavaScript array. Every 500 miliseconds, a new word from the sentence will be presented.
+When the sentence is over, a bold notice will appear: "Sentence over."
+After the sentence has been presented, a bold message will remain on the screen: "Sentence over".
+
 ### General attributes
 - `jsfill`: This will fill the HTML element with the value of any JavaScript expression provided.
   ```html
