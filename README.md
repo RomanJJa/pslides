@@ -1,4 +1,4 @@
-# PSlides: A flexible JavaScript library for online experiments and surveys
+# PSlides: A flexible HTML framwork for online experiments and surveys
 A JavaScript library for programming powerful psychological experiments and surveys. PSlides makes it easy to integrate anything that HTML and vanilla JS have to offer.
 
 ## Include:
@@ -58,15 +58,53 @@ The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. Wh
 document.querySelector("p-slide[current]")
 ```
   Nevertheless, it is usually quicker accessing the current slide's DOM element via the `pslides` object: `pslides.currentSlide`.
-#### For JavaScript programming: 
+**For JavaScript programming:**
 If you wish to quickly access the DOM element of the current slide in JavaScript, you can either access `pslides.currentSlide` or query `document.querySelector(p-slide[current])`.
 
 ### `<p-next>` and `<p-back>`
 `<p-next>` and `<p-back>` act as navigation buttons to move to the next or previous slide.
 **Attributes**
-- `to`: this allows you insert a number where to navigate to. The default value for `<p-next>` is `1` and for `<p-back>` is `-1`.
+- `to`: this allows you insert a number where to navigate to. 
+  The default value for `<p-slide>` is `to="1"` and for `<p-back>` is `t="-1"`.
   However, you can also insert an ID of a slide which will be interpreted as a string.
   This way, pressing the button will navigate you to the slide which has this ID.
+
+### `<p-set>`
+This node can contain a set of different slides. There are many reasons why one would like to bundle
+multiple slides together. In psychological experiments, a trial might consist of a fixation cross,
+stimulus and then a blank slide. In that case, the slides could be bundled up.
+In another scenario, maybe one aims to present different slides in a random order. In that case,
+we use the attribute `order="shuffle"` in the `<p-set>` element.
+```html
+<p-slide maxms="2500">
+   <p-center>
+      <p-next>Start random number sequence</p-next>
+   </p-center>
+</p-slide>
+<p-set order="shuffle">
+   <p-slide maxms="400">
+      <p-center>123</p-center>
+   </p-slide>
+   <p-slide maxms="400">
+      <p-center>132</p-center>
+   </p-slide>
+   <p-slide maxms="400">
+	  <p-center>213</p-center>
+   </p-slide>
+   <p-slide maxms="400">
+	  <p-center>231</p-center>
+   </p-slide>
+   <p-slide maxms="400">
+	  <p-center>312</p-center>
+   </p-slide>
+   <p-slide maxms="400">
+	  <p-center>321</p-center>
+   </p-slide>
+</p-set>
+<p-slide>
+   <p-center>Sequence over</p-center>
+</p-slide>
+```
 
 ### `<p-center>`
 This tag allows you to present, for instance, a stimulus at the center of the screen. For instance, you might wish to present a fixation cross in the center of the screen for 300 milliseconds:
@@ -75,6 +113,11 @@ This tag allows you to present, for instance, a stimulus at the center of the sc
    <p-center>+</p-center>
 </p-slide>
 ```
+
+### `<p-formframe>`
+A lot of times, we do not want to present some centered stimulus but instead have users fill out 
+a questionnaire or form. In this case, one can use a `<p-formframe>` element inside a `<p-slide>`
+element to create a frame for forms that adapt to the device's screen (smartphone, tablet, larger or smaller screens).
 
 ### `<p-upload>`
 This might be the most important tag of them all. After all, you wish to store your data somewhere.
@@ -124,9 +167,13 @@ If you wish to give summary statistics to the participant:
 
 ### `<p-input>`
 Some standard HTML elements like `<input>` do not look particularly nice to use in surveys.
-We too often need to program the spacing between input buttons and text or have likert scales. Although not necessary, the `<p-input>` tag is meant to save time in programming.
-This element can be used to implement "checkbox" items (for yes/no questions), "radio" items that only allow a single answer (like gender, or highest educational attainment), likert scales or much more.
-In the following example for radio button, we ask for people's gender. They can only pick one response (similar to common `<input type="radio">`. 
+We too often need to program the spacing between input buttons and text or have likert scales. 
+Although not necessary, the `<p-input>` tag is meant to save time in programming.
+This element can be used to implement "checkbox" items (for yes/no questions), 
+"radio" items that only allow a single answer (like gender, or highest educational attainment), 
+likert scales or much more.
+In the following example for radio button, we ask for people's gender.
+They can only pick one response (similar to the default HTML `<input type="radio">`). 
 ```html
 <p-input type="radio" name="gender">
    <label for="gender_male">I am male.</label>
@@ -135,9 +182,9 @@ In the following example for radio button, we ask for people's gender. They can 
 </p-input>
 ```
 The attribute `for` in the label will tell PSlides to create an input element:
-
 `<input type="radio" id="gender_male" name="gender">`
-The necessary features are implemented in a MutationObserver so that such items could also be added dynamically.
+The necessary features are implemented in a MutationObserver so that such items could also 
+be added dynamically.
 **Attributes**
 - `type="checkbox"`: Implement checkboxes. 
 - `type="radio"`: Implement radio buttons (only one item can be picked, similar to an old cassette recorder).
@@ -148,6 +195,9 @@ The necessary features are implemented in a MutationObserver so that such items 
     <p-input type="likert" name="feeling" options="1 2 3 4 5 6 7 8 9"></p-input>
 	```
     Options are here space-separated. They can also be semicolon-separated.
+	Importantly, `id` attributes for the different options will be assigned automatically.
+	The `id` is formed by taking the `<p-input>` name attribute, adding a `:` and then the option.
+	In case of the example, a perfect feeling would be `id="feeling:9"`.
 
 ### `<p-dragdrop>`
 Drag and drop elements within or between containers. For instance, one could sort or rank items.
@@ -160,7 +210,7 @@ Here is an example of a `<p-dragdrop>` element with shuffled child elements:
    <div name="item_D">Item D</div>
 </p-dragdrop>
 ```
-"Item B" cannot be dragged (because of `draggable="false"`) but its order can be affected by dragging and dropping the other items.
+"Item B" cannot be dragged (because of `draggable="false"`) but its order can be affected by dragging and dropping other items.
 **Attributes**
 - `import`: Can the `<p-dragdrop>` accept ("import") external draggable elements? It can be "true" if it can or "false" if it cannot.
   The experimenter can also set an element ID or a list of element IDs that the current `<p-dragdrop>` element can import elements from.
@@ -200,7 +250,7 @@ their participant code. You can do so by showing them the `<p-subjcode>` tag.
   If you set `copyable="false"` or remove the attribute, only the participant's code will be 
   displayed.
 
-### `<p-if> <p-elif> <p-else>`
+### `<p-if>`, `<p-elif>`, and `<p-else>`
 If you would like to present content depending on previous input or other JavaScript variables,
 you can concatinate `<p-if>`, `<p-elif>`, and `<p-else>` similar to any other programming language.
 Suppose that you ran a test and estimated the test score using a JavaScript variable.
@@ -208,6 +258,7 @@ You could now display different content within the slide depending on a conditio
 that accepts executable JavaScript returning true or false. Here is an example:
 ```html
 <script>
+   // We define an arbitrary score:
    let score = 9;
 </script>
 <p-if cond="typeof score !== 'number' || score < 0">
@@ -220,13 +271,14 @@ that accepts executable JavaScript returning true or false. Here is an example:
    <p>Very well done!</p>
 </p-elif>
 <p-else>
-   <p>We must practice some more!</p>
+   <p>We need a bit more practice, it seems!</p>
 </p-else>
 ```
 You can use `<p-if>`, `<p-elif>`, and `<p-else>` within `<p-slide>` to manage slide contents 
 or across many slides to manage which slide the user will see next.
-A sequence of conditionals does not have to end with a `<p-else>` node, but it must start with
-a `<p-if>` element because that element triggers an evaluation process.
+A sequence of conditionals does not have to end with a `<p-else>` node, but all 
+conditional statements must start with a `<p-if>` element 
+because that element triggers an evaluation process.
 
 ### `<p-while>`
 If you have an array over which to loop without repeating the same set of slides over and over again,
@@ -271,11 +323,11 @@ After the sentence has been presented, a bold message will remain on the screen:
   ```html
   <p-slide>
      <p-formframe>
-       <ul order="shuffle">
-          <li>Apples</li>
-          <li>Oranges</li>
-          <li>Pineapples</li>
-       </ul>
+        <ul order="shuffle">
+           <li>Apples</li>
+           <li>Oranges</li>
+           <li>Pineapples</li>
+        </ul>
      </p-formframe>
   </p-slide>
   ```
