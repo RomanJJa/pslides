@@ -1104,7 +1104,7 @@ function handleDrop(e) {
 			for (idfill of idfills) unpackIdFill(idfill); // idfill.innerHTML = clone.innerHTML;
 		},
 		"[idfill]": unpackIdFill,
-		"[order=shuffle]": handlePSet,
+		"[order=shuffle]": handleOrder,
 		"[src]:not(p-data,audio,embed,iframe,img,input[type=image],script,source,track,video)": function(node) {
 			// if file:// protocol, introduce an iframe,
 			
@@ -1555,24 +1555,47 @@ pslides.pseudoShuffleArray(items, [new pslides.orderRule(obj={type:'A'}, within=
 
 
 
-function handlePSet(node) {
+function handleOrder(node) {
 	// node = document.getElementById("experiment")
 	let order = ifNullStr(node.getAttribute("order")),
 		nstr  = node.getAttribute("n"),
 		n     = Number(ifNullStr(nstr)); //, preshuffle = true;
 	
-	// Handle order:
-	if (!isEmpty(order)) {
-		order = order.toLowerCase();
-		if (order==="shuffle") {
+	// Handle order attribute:
+	if (isEmpty(order)) return;
+	let lower = order.toLowerCase().trim(),
+		parenth = lower.substring(lower.indexOf("(")+1,lower.lastIndexOf(")")),
+		command = lower.replace("("+parenth+")","");
+	if (lower.indexOf("(")>=0 && lower.indexOf("(")<0) {
+		throw new Error("Attribute \"order\" contains an invalid argument for node:\n"+
+		                stringifyNodeTag(node));
+	}
+	if (lower==="shuffle") {
+		shuffleSeq(node)
+	} else if (lower==="latin") {
+		// LATIN SQUARE ORDER!
+	} else if (command==="pseudoshuffle") {
+		let tol = Number(tryEval(parenth, at=node));
+		if (parenth==="") tol = 1;
+		if (tol === 0 || isNaN(tol)) {
+			console.warn("Tolerance in order=\"pseudoshuffle\" not a valid number so just shuffling data:\n"+
+			             stringifyNodeTag(node));
 			shuffleSeq(node)
-		} else if (order.substring(0,13)==="pseudoshuffle") {
-			var tol = tryEval(order.substring(order.indexOf("(")+1,order.lastIndexOf(")")), at=node);
+		} else {
 			pseudoShuffleSeq(node, tol)
+		}
+	} else if (command==="reverse") {
+		let prob = Number(tryEval(parenth, at=node));
+		if (parenth==="") prob = 1;
+		if (isNaN(prob) || prob < 0) {
+			console.warn("Probability in order\"reverse\" not a valid number so just shuffling data:\n"+
+			             stringifyNodeTag(node));
+		} else if (prob > 1) {
+			prob = prob/100
 		}
 	}
 	
-	// Handle n:
+	// Handle n attribute:
 	if (isEmpty(nstr) || isNaN(n)) return;
 	while (node.children.length > n) {
 		node.children[node.children.length-1].remove();
@@ -2823,8 +2846,14 @@ window.addEventListener("keyup", (event) => {
 
 
 pslides.getKeys = function(slidesback=-1) {
-	if (outObj.slides.length<2 && slidesback<0) return [];
-	if (slidesback == 0) return pslides.key.down.k;
+	// slidesback=null
+	if (outObj.slides.length<2 && slidesback<0)  [];
+	if (slidesback == 0) {
+		let out = outObj.slides[outObj.slides.length-1].key.down.k,
+			cur = pslides.key.down.k;
+		if (cur.length==0) return out;
+		return cur;
+	}
 	if (slidesback > 0) slidesback = -slidesback;
 	if (slidesback < -outObj.slides.length+1) {
 		throw new Error("Argument \"slidesback\" in pslides.getKeys() "+
@@ -3474,6 +3503,7 @@ function renderSlide(slide) {
 		/* if (!["SVG","P-GENCODE","P-SUBJCODE","BR"].includes(d.tagName)) {
 			
 		} else */
+		evalJSAttr(d);
 		if (d.tagName === "SCRIPT") {
 			//console.log("renderSlide SCRIPT: ", d)
 			tryEval(d.innerHTML, at=d)
