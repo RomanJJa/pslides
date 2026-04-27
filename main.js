@@ -2849,10 +2849,14 @@ pslides.getKeys = function(slidesback=-1) {
 	// slidesback=null
 	if (outObj.slides.length<2 && slidesback<0)  [];
 	if (slidesback == 0) {
-		let out = outObj.slides[outObj.slides.length-1].key.down.k,
-			cur = pslides.key.down.k;
-		if (cur.length==0) return out;
-		return cur;
+		try {
+			let out = outObj.slides[outObj.slides.length-1].key.down.k,
+				cur = pslides.key.down.k;
+			if (cur.length==0) return out;
+			return cur;
+		} catch {
+			return [];
+		}
 	}
 	if (slidesback > 0) slidesback = -slidesback;
 	if (slidesback < -outObj.slides.length+1) {

@@ -428,6 +428,27 @@ p-dragdrop[layout=column]>* {
 	margin: 10px auto;
 }
 
+
+/* style shortcuts*/
+[align="center"] {
+	text-align: center;
+	justify-content: center;
+}
+[align="right"] {
+	text-align: right;
+	justify-content: flex-end;
+}
+[align="left"] {
+	text-align: left;
+	justify-content: flex-start;
+}
+[align="justify"] {
+	text-align: justify;
+	justify-content: space-between;
+}
+
+
+
 @keyframes p-shrinktransform {
 	from {
 		transform: scaleX(1.3) scaleY(1.3); /* make smaller in JavaScript! */
