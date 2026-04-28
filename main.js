@@ -2238,6 +2238,7 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 		}
 	}
 	
+	let sendTime = Number(new Date());
 	if (["http:","https:"].includes(loc) && !isFirstSlide) {
 		try {
 			var params = extractParameter(["lang","root","prj","subj","session","cond","srcprj","srcfn","srcroot"]),
@@ -2271,14 +2272,16 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 			// xhr.setRequestHeader("X-PSlides-Meta", stringify(outObj.meta));
 			
 			// Send the data when enough time past from the previous data submission:
-			let sendTime = Number(new Date());
 			if (sendTime - pslides.lastSubmission > 2000) {
 				pslides.lastSubmission = sendTime;
 				xhr.send(datastr);
 			}
 		} catch (error) {
-			displayMessage(pslides.printMessage("sendDataError")+"\n"+error,
-						   id=message_id, type="error")
+			if (sendTime - pslides.lastSubmission > 2000) {
+				displayMessage(pslides.printMessage("sendDataError")+"\n"+error,
+							   id=message_id, type="error")
+			}
+			
 		}
 	} else if (loc === "file:") {
 		displayMessage(pslides.printMessage("sendDataLocalToExternal"), id=message_id, type="error")
