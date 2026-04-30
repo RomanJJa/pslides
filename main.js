@@ -1087,7 +1087,7 @@ function handleDrop(e) {
 			}
 		},
 		"p-next,p-back,p-exit": unpackSlideNavigation,
-		"p-data[src]":unpackPData,
+		"p-data":unpackPData,
 		"[id]": function(node) {
 			// node = document.getElementById("button_template"); updateIdFill(node)
 			
