@@ -1097,7 +1097,7 @@ function handleDrop(e) {
 			const idfills = document.querySelectorAll("[idfill=\""+id+"\"]"),
 				  clone   = node.cloneNode(true);
 			
-			console.log("idfills: ", idfills);
+			//console.log("idfills: ", idfills);
 			// remove IDs from elements to prevent duplicate IDs:
 			clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
 			// console.log("clone.innerHTML:", clone.innerHTML)
@@ -2956,6 +2956,12 @@ function pointerUpHandleButtons(target) {
 		// insert 
 		if (!isDOMElement(target) || target.tagName !== "P-REDIRECT") return;
 		
+		let fullyAnswered = isSlideAnswered(pslides.currentSlide);
+		if (!fullyAnswered) {
+			alert(pslides.printMessage("UnansweredQuestions"));
+			return;
+		}
+		
 		// remove event listener for beforeunload:
 		window.removeEventListener("beforeunload", pslides.beforeunload);
 		
@@ -3392,7 +3398,7 @@ function isSlideAnswered(slide) {
 			
 			if (!res) Continue = res;
 			for (var j=0; j<dn.length;j++) {
-				if        (!res && ((dn[j].tagName==="INPUT" && (dn[j].getAttribute("type")==="text" || 
+				if (!res && ((dn[j].tagName==="INPUT" && (dn[j].getAttribute("type")==="text" || 
 				           dn[j].getAttribute("type")==="email" || dn[j].getAttribute("type")==="tel")) || dn[j].tagName==="TEXTAREA")) {
 					dn[j].style.backgroundColor="#FFCCCC";dn[j].style.borderColor="#DD0000";
 				} else if (!res) {
