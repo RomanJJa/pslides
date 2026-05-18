@@ -144,6 +144,12 @@ const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null
 						"de":"Sie können die heruntergeladenen Daten im Ordner \"Downloads\" finden.",
 						"fr":"Vous trouverez le fichier téléchargé dans votre dossier <p-nobr>« Téléchargements »</p-nobr>.",
 						"zh":"您可以在“下载”文件夹中找到下载的文件。"
+					},
+					"dataNotSentPreviousError": {
+						"en":"Data have not been sent due to a previous error in the console. This blocks the redirect to preserve the current data until the issue can be fixed.",
+						"de":"Aufgrund eines vorherigen Fehlers in der Konsole konnten keine Daten gesendet werden. Daher wird die Weiterleitung blockiert, um die aktuellen Daten zu erhalten, bis das Problem behoben ist.",
+						"fr":"Les données n'ont pas pu être envoyées en raison d'une erreur précédente dans la console. La redirection est donc bloquée afin de préserver les données actuelles jusqu'à la résolution du problème.",
+						"zh":"由于控制台之前出现错误，数据尚未发送。这会阻止重定向，以保留当前数据，直到问题解决。"
 					}
 				 },
 				 language: {lang: "en", script: null, region: null},
@@ -2265,7 +2271,7 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 			xhr.onreadystatechange = function() {messagingHTTPRequest(this, message_id, method="post")};
 			xhr.onload = function() {
 				messagingHTTPRequest(this, message_id, method="post");
-				if (typeof onload === "function") onload();
+				if (typeof onload === "function") onload(this);
 			};
 			xhr.setRequestHeader("Content-Type", contentType+"; charset=utf-8");
 			xhr.setRequestHeader("Accept-Language", document.documentElement.lang);
@@ -2917,10 +2923,10 @@ function handleSendAttribute(node, onload=null) {
 	var obj = null, js = node.getAttribute("js"),
 		format = node.getAttribute("format");
 	if (!isEmpty(js)) obj = tryEval(js, at=node);
-	if (window.location.protocol!=="file:") {
+	if (window.location.protocol!=="file:") { // if we use a web protocol
 		return sendOutData(element=node, data=obj, format=format, onload=onload);
-	} else if (typeof onload == "function") {
-		onload();
+	} else if (typeof onload == "function") { 
+		onload(); // if no web protocol, still execute the onload() function.
 	} else {
 		console.error("No onload function in handleSendAttribute().");
 	}
@@ -2962,20 +2968,28 @@ function pointerUpHandleButtons(target) {
 			return;
 		}
 		
-		// remove event listener for beforeunload:
-		window.removeEventListener("beforeunload", pslides.beforeunload);
-		
-		handleSendAttribute(target, onload = () => {
+		handleSendAttribute(target, onload = (xhr) => {
 			// update subject code!
 			// console.log("target:", target);
 			let href = target.getAttribute("href");
 			let redir = createRedirectURI(href);
+			
+			if (xhr !== null && xhr.status > 399) {
+				throw new Error(pslides.printMessage("dataNotSentPreviousError"));
+			}
+			
+			// Now redirect:
 			var a = document.createElement("a");
 			a.setAttribute("href", redir);
 			document.body.appendChild(a);
 			a.click();
 			a.remove();
 		});
+		
+		
+		// remove event listener for beforeunload:
+		window.removeEventListener("beforeunload", pslides.beforeunload);
+				
 	} else if (target.tagName==="P-UPLOAD") {
 		sendOutData(element=target);
 	} else if (target.tagName==="P-DOWNLOAD") {
@@ -3527,7 +3541,7 @@ function renderSlide(slide) {
 		}
 		
 		
-		console.log("renderSlide is at", d)
+		//console.log("renderSlide is at", d)
 		if (d.tagName === "P-IF") {
 			//console.log("STARTIG P-IF:", d);
 			d_prev = d;
@@ -3561,7 +3575,7 @@ function renderSlide(slide) {
 			// d = d.parentElement;
 			d = getDistantCousin(d)
 		}
-		console.log("renderSlide ends at", d)
+		//console.log("renderSlide ends at", d)
 	}
 }
 
