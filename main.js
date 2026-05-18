@@ -3458,7 +3458,7 @@ function handlePIf(pif) {
 		res = pif; pif.removeAttribute("ignore")
 	}
 	pif = pif.nextElementSibling;
-	console.log("P-IF", pif)
+	// console.log("P-IF", pif)
 	while (pif !== null && pif.tagName === "P-ELIF") {
 		if (res !== null) {
 			pif.setAttribute("ignore", "true")
@@ -3494,8 +3494,9 @@ function getDistantCousin(node) {
 
 // DYSFUNCTIONAL FOR P-IF ?
 function renderSlide(slide) {
-	var d = slide.firstElementChild, cond=false;
+	var d = slide.firstElementChild, d_prev = null, cond=false;
 	pslides.autoplayed = [];
+	console.log("Start renderSlide()")
 	while (d !== null && d !== slide) {
 		// First, move to the next node and try to render
 		
@@ -3504,7 +3505,7 @@ function renderSlide(slide) {
 		//console.log("evalJSAttr()", stringifyNodeTag(d))
 		
 		
-		 /*else if (d.tagName === "P-WHILE") { // p-while inside p-slide, what to do??
+		/*else if (d.tagName === "P-WHILE") { // p-while inside p-slide, what to do??
 			var cond = tryEval(d.getAttribute("cond"),at=d)
 			if (cond === true) {
 				d.removeAttribute("ignore");
@@ -3525,20 +3526,33 @@ function renderSlide(slide) {
 			pslides.autoplayed.push(d);
 		}
 		
+		
+		console.log("renderSlide is at", d)
 		if (d.tagName === "P-IF") {
+			//console.log("STARTIG P-IF:", d);
+			d_prev = d;
 			d = handlePIf(d);
-			if (d !== null && d.tagName === "P-IF" && d.firstElementChild !== null) {
+			if (d === null) { // if non of the p-if elements are true
+				d = d_prev;
+				if (d.nextElementSibling===null) {
+					d = getDistantCousin(d);
+				} else {
+					d = d.nextElementSibling;
+				} 
+			} else if (d !== null && d.tagName === "P-IF" && d.firstElementChild !== null) {
 				d = d.firstElementChild;
 			} else if (d !== null && d.tagName === "P-IF" && d.nextElementSibling !== null) {
 				d = d.nextElementSibling;
 			} else if (d !== null && d.tagName === "P-IF") {
 				d = getDistantCousin(d);
 			}
-			console.log("current d: ", d)
-		} else if (["P-ELIF","P-ELSE"].includes(d.tagName) && d.nextElementSibling !== null) {
-			d = d.nextElementSibling
+			//console.log("current d: ", d)
 		} else if (["P-ELIF","P-ELSE"].includes(d.tagName)) {
-			d = getDistantCousin(d)
+			if (d.nextElementSibling !== null) {
+				d = d.nextElementSibling
+			} else {
+				d = getDistantCousin(d)
+			}
 		} else if (d.firstElementChild !== null) {
 			d = d.firstElementChild;
 		} else if (d.nextElementSibling !== null) {
@@ -3547,6 +3561,7 @@ function renderSlide(slide) {
 			// d = d.parentElement;
 			d = getDistantCousin(d)
 		}
+		console.log("renderSlide ends at", d)
 	}
 }
 
