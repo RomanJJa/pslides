@@ -3886,7 +3886,7 @@ function recordElement(node, obj) {
 		if (parsed_var !== null && typeof parsed_var === "object" && !Array.isArray(parsed_var)) {
 			obj.variables = {...obj.variables, ...parsed_var};
 		} else {
-			obj.variables = parsed_var;
+			obj.variables[name] = parsed_var;
 		}
 	} else if (tag === "p-var") {
 		if (!(name in obj.variables)) obj.variables[name] = {};
