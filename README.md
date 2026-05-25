@@ -124,6 +124,7 @@ Insert any runtime errors or logs in an HTML element.
 You can also use the JavaScript function `displayMessage(message, node=null, signal="neutral", inConsole=true)`
 (`node`: reference node; `signal`: the type of message ("neutral", "error", "ok", "warning");
 `inConsole`: display the error in the browser's console?).
+
 **Attributes**
 - `for`: You can use the `for` attribute to associate the `<p-message>` element with an `<p-upload>` or `<p-download>` button.
 - `onlyerrors`: Only display errors in the `<p-message>` element.
