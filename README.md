@@ -69,6 +69,19 @@ If you wish to quickly access the DOM element of the current slide in JavaScript
   However, you can also insert an ID of a slide which will be interpreted as a string.
   This way, pressing the button will navigate you to the slide which has this ID.
 
+### `<p-center>`
+This tag allows you to present, for instance, a stimulus at the center of the screen. For instance, you might wish to present a fixation cross in the center of the screen for 300 milliseconds:
+```html
+<p-slide maxms="300">
+   <p-center>+</p-center>
+</p-slide>
+```
+
+### `<p-formframe>`
+A lot of times, we do not want to present some centered stimulus but instead have users fill out 
+a questionnaire or form. In this case, one can use a `<p-formframe>` element inside a `<p-slide>`
+element to create a frame for forms that adapt to the device's screen (smartphone, tablet, larger or smaller screens).
+
 ### `<p-set>`
 This node can contain a set of different slides. There are many reasons why one would like to bundle
 multiple slides together. In psychological experiments, a trial might consist of a fixation cross,
@@ -106,18 +119,15 @@ we use the attribute `order="shuffle"` in the `<p-set>` element.
 </p-slide>
 ```
 
-### `<p-center>`
-This tag allows you to present, for instance, a stimulus at the center of the screen. For instance, you might wish to present a fixation cross in the center of the screen for 300 milliseconds:
-```html
-<p-slide maxms="300">
-   <p-center>+</p-center>
-</p-slide>
-```
-
-### `<p-formframe>`
-A lot of times, we do not want to present some centered stimulus but instead have users fill out 
-a questionnaire or form. In this case, one can use a `<p-formframe>` element inside a `<p-slide>`
-element to create a frame for forms that adapt to the device's screen (smartphone, tablet, larger or smaller screens).
+### `<p-message>`
+Insert any runtime errors or logs in an HTML element.
+You can also use the JavaScript function `displayMessage(message, node=null, signal="neutral", inConsole=true)`
+(`node`: reference node; `signal`: the type of message ("neutral", "error", "ok", "warning");
+`inConsole`: display the error in the browser's console?).
+**Attributes**
+- `for`: You can use the `for` attribute to associate the `<p-message>` element with an `<p-upload>` or `<p-download>` button.
+- `onlyerrors`: Only display errors in the `<p-message>` element.
+  This can be particularly useful when you do not want to confuse survey participants with unnecessary updates or logs.
 
 ### `<p-upload>`
 This might be the most important tag of them all. After all, you wish to store your data somewhere.
@@ -135,7 +145,7 @@ This is why you can include a `<p-message>` on the slide (maybe right below the 
 Simply give the `<p-upload>` button a unique `id` (unique to this element in the entire document). 
 ```html
 <p-upload id="data_upload0" format="csv">Upload data</p-upload>
-<p-message for="data_upload0">No upload yet</p-message>
+<p-message for="data_upload0" onlyerrors>No upload yet</p-message>
 ```
 When the client clicks on the `<p-upload>` element,
 it will message the state of the upload. An error will be written in red font, a successful upload in blue font, and any progress in-between in orange font.
@@ -258,8 +268,7 @@ You could now display different content within the slide depending on a conditio
 that accepts executable JavaScript returning true or false. Here is an example:
 ```html
 <script>
-   // We define an arbitrary score:
-   let score = 9;
+   let score = 9; // We define an arbitrary score.
 </script>
 <p-if cond="typeof score !== 'number' || score < 0">
    <p><b>Come on!</b> Give me an actual score - a positive number!</p>
