@@ -124,9 +124,17 @@ Insert any runtime errors or logs in an HTML element.
 You can also use the JavaScript function `displayMessage(message, node=null, signal="neutral", inConsole=true)`
 (`node`: reference node; `signal`: the type of message ("neutral", "error", "ok", "warning");
 `inConsole`: display the error in the browser's console?).
-
+```html
+<p>Here is some error-free content (string) to be evaluated: <b jsfill="'Hello there'"></b></p>
+<p>Here is some evaluated content that should create an error: <code jsfill="[1,2,3">Error for evaluating "[1,2,3".</code></p>
+<p>Here are all logs:</p>
+<p-message>No message yet</p-message>
+<p>Here are <b>only error</b> messages:</p>
+<p-message onlyerrors>No message yet</p-message>
+```
 **Attributes**
 - `for`: You can use the `for` attribute to associate the `<p-message>` element with an `<p-upload>` or `<p-download>` button.
+  If no `for` attribute is set, the `<p-message>` tag is not dedicated to a specific node. This way, the 
 - `onlyerrors`: Only display errors in the `<p-message>` element.
   This can be particularly useful when you do not want to confuse survey participants with unnecessary updates or logs.
 
