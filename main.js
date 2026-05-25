@@ -59,30 +59,30 @@
 // if file cannot be reached, do it randomly
 
 // first, start the pslides object.
-const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null, autoplayed:[],
+const pslides = {version:"0.3", fullscreen: false, data: {}, slides: [], slideTimerTimeout:null, autoplayed:[],
                  slideStartTime: new Date(), slideEndTime: new Date(),
 				 messageTexts: {
-					"beforeunload": {
+					"Beforeunload": {
 						"en":"Are you sure you want to quit? You will <b>not</b> be able to continue with this survey at a later point.",
 						"de":"Sind Sie sicher, dass Sie abbrechen möchten? Sie können diese Umfrage danach <b>nicht</b> fortsetzen.",
 						"fr":"Êtes-vous sûr de vouloir quitter ? Vous ne pourrez <b>pas</b> poursuivre ce sondage.",
 					},
-					"missingResponses": {
+					"MissingResponses": {
 						"en":"Please fill out all mandatory fields. Then you can continue to the next page.",
 						"de":"Bitte füllen Sie alle Pflichtfelder aus. Dann können Sie fortfahren.",
 						"fr":"Veuillez remplir tous les champs obligatoires. Vous pourrez ensuite passer à la page suivante.",
 					},
-					"sendDataLocalToExternal": {
+					"SendDataLocalToExternal": {
 						"en":"You cannot send data to an external server when the current survey is on a local file.\nThe current link starts with \"file://…\" and does not follow the HTTP protocol\n(starting with \"http://…\" or \"https://…\").",
 						"de":"Beim Verwenden lokaler Dateien können keine Daten an externe Server gesendet werden.\nDer Link beginnt mit \"file://…\" und entspricht nicht dem HTTP-Protokoll\n(beginnend mit \"http://…\" oder \"https://…\").",
 						"fr":"Vous ne pouvez pas envoyer de données à un serveur externe lorsque vous naviguez dans des fichiers locaux.\nLe lien commence par « file://… » et ne suit pas le protocole HTTP (commençant par « http://… » ou « https://… »).",
 					},
-					"sendDataOnFirstSlide": {
+					"SendDataOnFirstSlide": {
 						"en":"You cannot send data on the first slide (<code>&lt;p-slide&gt;</code>) of the page.",
 						"de":"Auf der ersten Slide (<code>&lt;p-slide&gt;</code>) der Seite können keine Daten gesendet werden.",
 						"fr":"Vous ne pouvez pas envoyer de données sur la première page (<code>&lt;p-slide&gt;</code>) du site.",
 					},
-					"sendDataError": {
+					"SendDataError": {
 						"en":"An error has occured when trying to upload the data:",
 						"de":"Ein Fehler ist beim Hochladen der Daten aufgetreten:",
 						"fr":"Une erreur s'est produite lors de la tentative de chargement des données:",
@@ -150,6 +150,18 @@ const pslides = {fullscreen: false, data: {}, slides: [], slideTimerTimeout:null
 						"de":"Aufgrund eines vorherigen Fehlers in der Konsole konnten keine Daten gesendet werden. Daher wird die Weiterleitung blockiert, um die aktuellen Daten zu erhalten, bis das Problem behoben ist.",
 						"fr":"Les données n'ont pas pu être envoyées en raison d'une erreur précédente dans la console. La redirection est donc bloquée afin de préserver les données actuelles jusqu'à la résolution du problème.",
 						"zh":"由于控制台之前出现错误，数据尚未发送。这会阻止重定向，以保留当前数据，直到问题解决。"
+					},
+					"RequestTimedOut": {
+						"en":"The request timed out. It stopped waiting for a server response.",
+						"de":"Die Anfrage ist abgelaufen. Es wurde aufgehört, auf eine Serverantwort zu warten.",
+						"fr":"La requête a expiré. L'attente d'une réponse du serveur a été interrompue.",
+						"zh":"请求超时，停止等待服务器响应。"
+					},
+					"ConnectionBrokeOff": {
+						"en":"The internet connection broke off.",
+						"de":"Die Internetverbindung wurde unterbrochen.",
+						"fr":"La connexion internet a été interrompue.",
+						"zh":"网络连接中断了。"
 					}
 				 },
 				 language: {lang: "en", script: null, region: null},
@@ -280,28 +292,47 @@ function stringify(x) {
 	return res;
 }
 
-function displayMessage(message, id=null, type=null) {
-	type = ifNullStr(type).toLowerCase();
-	var query = "p-message[for=\""+escapeString(id)+"\"]";
-	if (isEmpty(id) || document.querySelector(query) === null) {
-		if (type==="error") {
+function displayMessage(message, node=null, signal="neutral", inConsole=true) {
+	signal = ifNullStr(signal).toLowerCase();
+	var d = [], id = null, isSpecified = false;
+	if (isDOMElement(node)) id = node.id;
+	let query = "p-message:not([for]), p-message[for='']";
+	if (!isEmpty(id) && document.getElementById(id)!==null) {
+		query = "p-message[for=\""+escapeString(id)+"\"]";
+		isSpecified = true;
+	}
+	
+	if (inConsole) {
+		if (signal==="error") {
 			console.error(message);
-		} else if (type.indexOf("warn")>-1) {
+		} else if (signal==="warning") {
 			console.warn(message);
 		} else {
 			console.log(message);
 		}
-	} else {
-		var d = document.querySelectorAll(query);
-		for (var i=0; i<d.length; i++) {
-			if (type==="error") {
-				d[i].style.color = "#EF0000";
-			} else if (type.indexOf("warn")>-1) {
-				d[i].style.color = "#FF7700";
+	}
+	
+	d = document.querySelectorAll(query);
+	// console.warn("id="+id+"  "+query+"\n", d)
+	let curSignal = "neutral";
+	for (var i=0; i<d.length; i++) {
+		if (signal!=="ok" || 
+		    (d[i].getAttribute("onlyerrors")===null && 
+			 ["ok","neutral"].includes(signal))) {
+			
+			
+			if (isSpecified) {
+				curSignal = d[i].getAttribute("signal");
+				if (!["error","warning"].includes(curSignal)) {
+					d[i].setAttribute("signal", signal);
+				} else if ("error" !== curSignal) {
+					d[i].setAttribute("signal", signal);
+				}
+				d[i].innerHTML = message.replaceAll("\n","<br/>");
 			} else {
-				d[i].style.color = "#0000EF";
+				d[i].innerHTML += "<p signal=\""+signal+"\">"+
+				                  message.replaceAll("\n","<br/>")+"</p>";
 			}
-			d[i].innerHTML = message.replaceAll("\n","<br/>");
 		}
 	}
 }
@@ -430,39 +461,42 @@ function isDOMElement(obj) {
 
 // evaluate a string:
 function tryEval(str, at="", ifError=null) {
-	var res = null;
+	var res = null, idFrag = "";
 	if (typeof at === "string" && at !== "") at = document.getElementById(at);
+	if (at.id !== "") idFrag = " at "+stringifyHTMLAttribute("id", at.id);
 	try {
 		res = eval(str);
-		if (isDOMElement(at) && at.id !== "") {
-			displayMessage("Successfully evaluated JavaScript fragment at id=\""+
-			               escapeString(at.id)+"\".", id=at.id)
+		if (isDOMElement(at)) { // && !["P-DOWNLOAD","P-UPLOAD"].includes(at.tagName) ???
+			displayMessage("Successfully evaluated JavaScript fragment"+idFrag+".", node=at, signal="ok")
 		}
 		return res;
 	} catch(e) {
-		if (isDOMElement(at)) {
-			// at = " at " + stringifyNodeTag(at)
-			displayMessage("Error when evaluating the element where <p-nobr>id=\""+
-						   at.id+"\":</p-nobr>\n"+e, id=at.id, type="error")
-		} else if (typeof at === "string" && at.trim().length>0) {
-			at = " "+at.trim();
+		e = String(e)
+		if (typeof ifError === "function") {
+			try {
+				res = ifError();
+				return res;
+			} catch (e2) {
+				e += "\n\nCatch error:\n" + String(e2)
+			}
+			ifError = "";
+		} else {
+			ifError = stringify(ifError);
 		}
 		
-		if (typeof ifError === "function") {
-			return ifError();
-		} else if (typeof ifError === "string") {
-			console.error("Error when evaluating \""+str+"\""+String(at)+".\n", ifError, "\n", e);
-		} else if (![undefined,null,""].includes(ifError)) {
-			console.error("Error when evaluating \""+str+"\""+String(at)+".\n", stringify(ifError), "\n", e);
-		} else {
-			console.error("Error when evaluating \""+str+"\""+String(at)+".\n", e);
+		if (isDOMElement(at)) {
+			displayMessage("Error when evaluating the element \""+stringifyNodeTag(at)+"\":\n"+ifError,
+						   node=at, signal="error");
+		} else if (typeof at === "string" && at.trim().length > 0) {
+			at = " "+at.trim().replaceAll("\n"," ");
+			displayMessage("Error when evaluating \""+at+"\":\n"+e+"\n"+ifError, node=at, signal="error");
 		}
 	}
 }
 
 function evalScript(node) {
 	displayMessage("Could not evaluate \"jsfill\" in element with <p-nobr>id=\""+
-						   node.id+"\":</p-nobr>\n"+e, id=node.id, type="error")
+				   node.id+"\":</p-nobr>\n"+e, node=node, signal="error")
 }
 
 // split string into an array: split by ";", otherwise whitespace
@@ -2116,6 +2150,8 @@ pslides.printMessage = function(token, lang=null) {
 	// pslides.printMessage("RequestNotSent")
 	// token="RequestNotSent"; lang="fr-FR";
 	
+	//console.log("token: ", token);
+	
 	// Check if the message token even exists:
 	if (!(token in pslides.messageTexts)) {
 		throw new Error("The token does not correspond to an existing message. Check out \"pslides.messageTexts\".");
@@ -2160,9 +2196,9 @@ pslides.printMessage = function(token, lang=null) {
 	}
 }
 
-function messagingHTTPRequest(request, id=null, method="POST") {
+function messagingHTTPRequest(request, node=null, method="POST") {
 	// console.log(request);
-	var type   = "warn",
+	var signal = "warning",
 		method = method.toLowerCase(),
 		// lang   = pslides.printLanguage(),
 		mes    = "No message.",
@@ -2201,20 +2237,31 @@ function messagingHTTPRequest(request, id=null, method="POST") {
 		
 		mes  = "<b>"+pslides.printMessage("Status")+" "+
 		       request.status+": "+request.statusText+"</b><br/>";
-		type = "neutral"; 
-		if (request.status > 199 && request.status < 300) {
-			type="neutral";
+		signal = "neutral"; 
+		if (request.status == 0) {
+			signal="error";
+			mes = "&#x274C; <b>"+"Not sent"+"</b>:<br/>"
+			if (Number(new Date()) - pslides.lastSubmission > 5000) {
+				mes += pslides.printMessage("RequestTimedOut")
+			} else {
+				mes += pslides.printMessage("ConnectionBrokeOff")
+			}
+		} else if (request.status > 99 && request.status < 200) {
+			signal="warning";
+			mes = "... "+mes;
+		} else if (request.status > 199 && request.status < 300) {
+			signal="ok";
 			mes = "&#x2705; "+mes;
 		} else {
-			type="error"
+			signal="error"
 			mes = "&#x274C; "+mes+"<br/>POST URI: <u>"+request.responseURL+"</u><br/>";
 		}
 		mes += body;
 	}
 	console.log("mes for state "+state+": ", mes)
-	if (mes.length > 700 && type==="neutral") mes = mes.substring(0, 700)+" …";
+	if (mes.length > 700 && signal!=="error") mes = mes.substring(0, 700)+" …";
 	//console.log("request: ",request);
-	displayMessage(message=mes, id=id, type=type);
+	displayMessage(message=mes, node=node, signal=signal, inConsole=(state==4));
 }
 
 
@@ -2225,7 +2272,7 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 	if (isEmpty(format)) format = "csv";
 	format = format.trim().toLowerCase();
 	let isDOM = isDOMElement(element), xhr = null;
-	if (data===null && isDOM && ![undefined,null,""].includes(element.getAttribute("js"))) {
+	if (data===null && isDOM && !isEmpty(element.getAttribute("js"))) {
 		data = tryEval(element.getAttribute("js"), at=element, ifError=function(){return outObj;});
 	}
 	// is data is still empty, make it the outObj:
@@ -2234,17 +2281,18 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 	}
 	
 	var loc = window.location.protocol,
-		message_id = null;
 		isFirstSlide = document.querySelector("p-slide[current]") === document.querySelector("p-slide") &&
 		               document.querySelectorAll("p-slide").length>2;
 	if (isDOM) {
-		message_id = element.id;
 		if (![null,""].includes(element.getAttribute("format"))) {
 			format = element.getAttribute("format");
 		}
 	}
 	
-	let sendTime = Number(new Date());
+	let sendTime = Number(new Date()),
+		timeout = ["127.0.0.1","localhost"].includes(window.location.host) ||
+		          sendTime - pslides.lastSubmission > 2000;
+	
 	if (["http:","https:"].includes(loc) && !isFirstSlide) {
 		try {
 			var params = extractParameter(["lang","root","prj","subj","session","cond","srcprj","srcfn","srcroot"]),
@@ -2268,9 +2316,9 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 			// window.location.search = "?"+;
 			console.log("request URL:\n",url);
 			xhr.open("POST", url); // 'save_subj_data.php' is the path to the php file described above.
-			xhr.onreadystatechange = function() {messagingHTTPRequest(this, message_id, method="post")};
+			xhr.onreadystatechange = function() {messagingHTTPRequest(this, element, method="post")};
 			xhr.onload = function() {
-				messagingHTTPRequest(this, message_id, method="post");
+				messagingHTTPRequest(this, element, method="post");
 				if (typeof onload === "function") onload(this);
 			};
 			xhr.setRequestHeader("Content-Type", contentType+"; charset=utf-8");
@@ -2278,23 +2326,23 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 			// xhr.setRequestHeader("X-PSlides-Meta", stringify(outObj.meta));
 			
 			// Send the data when enough time past from the previous data submission:
-			if (sendTime - pslides.lastSubmission > 2000) {
+			if (timeout) {
 				pslides.lastSubmission = sendTime;
 				xhr.send(datastr);
 			}
 		} catch (error) {
-			if (sendTime - pslides.lastSubmission > 2000) {
-				displayMessage(pslides.printMessage("sendDataError")+"\n"+error,
-							   id=message_id, type="error")
+			if (timeout) {
+				displayMessage(pslides.printMessage("SendDataError")+"\n"+error,
+							   node=element, signal="error")
 			}
 			
 		}
 	} else if (loc === "file:") {
-		displayMessage(pslides.printMessage("sendDataLocalToExternal"), id=message_id, type="error")
+		displayMessage(pslides.printMessage("SendDataLocalToExternal"), node=element, signal="error")
 	} else if (isFirstSlide) {
-		displayMessage(pslides.printMessage("sendDataOnFirstSlide"), id=message_id, type="error")
+		displayMessage(pslides.printMessage("SendDataOnFirstSlide"), node=element, signal="error")
 	} else {
-		displayMessage(pslides.printMessage("sendDataUnknownError"), id=message_id, type="error")
+		displayMessage(pslides.printMessage("SendDataUnknownError"), node=element, signal="error")
 	}
 	return xhr;
 }
@@ -2354,12 +2402,12 @@ function evalJSAttr(node) {
 			}
 			if (node.id !== "") {
 				displayMessage("\"jsattr\" successfully evaluated in id=\""+
-							   node.id+"\":", id=node.id)
+							   node.id+"\":", node=node)
 			}
 		} catch(e) {
 			displayMessage("Could not evaluate \"jsattr\" to insert "+
 			               "attributes in element with id=\""+
-						   node.id+"\":\n"+e, id=node.id, type="error")
+						   node.id+"\":\n"+e, node=node, signal="error")
 		}
 	}
 	var jsfill = node.getAttribute("jsfill");
@@ -2368,11 +2416,10 @@ function evalJSAttr(node) {
 			node.innerHTML = stringify(eval(jsfill+";"))
 			if (node.id !== "") {
 				displayMessage("\"jsfill\" successfully evaluated at id=\""+
-							   node.id+"\":", id=node.id)
+							   node.id+"\":", node=node)
 			}
 		} catch(e) {
-			displayMessage("Could not evaluate \"jsfill\" in element with id=\""+
-						   node.id+"\":\n"+e, id=node.id, type="error")
+			displayMessage("Could not evaluate \"jsfill\":\n"+e, node=node, signal="error")
 		}
 	}
 }
@@ -2381,9 +2428,9 @@ pslides.download = function(node, obj=null, filename=null) {
 	try {
 		downloadObj(node, obj, filename)
 		displayMessage(message="&#9989; <b>"+pslides.printMessage("DownloadSuccessful")+"</b>:\n"+
-			pslides.printMessage("FindDownload"), id=node.id, type="log")
+			pslides.printMessage("FindDownload"), node=node, signal="neutral")
 	} catch(e) {
-		displayMessage(message="&#10060; "+String(e), id=node.id, type="error")
+		displayMessage(message="&#10060; "+String(e), node=node, signal="error")
 	}
 }
 
@@ -3590,11 +3637,11 @@ function hasParentAttribute(node, attr="p_hiddenclass", value="never") {
 
 function prepareSlide(slide) {
 	// fullscreen?
-	//evalJSAttr(slide)
+	evalJSAttr(slide)
 	
 	// evaluate JS attributes:
 	let js = slide.querySelectorAll("p-subjcode,[jsattr],[jsfill]");
-	for (var i=0;i<js.length;i++) evalJSAttr(js[i]);
+	//for (var i=0;i<js.length;i++) evalJSAttr(js[i]);
 
 	renderSlide(slide);
 	var attr = slide.attributes, counter=outObj.slides.length-1,
