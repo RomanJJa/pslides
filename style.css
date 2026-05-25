@@ -133,12 +133,6 @@ p-exit:active svg path, p-redirect:active svg path {
 	z-index: 2;
 }
 
-p-message {
-	display: block;
-	margin: 0.5em;
-	text-align: center;
-}
-
 
 p-slide {
 	display: none;
@@ -326,6 +320,36 @@ p-input[type=subj] input[type=text] {
 	font-family: monospace;
 }
 
+p-message {
+	display: block;
+	margin: 0.5em;
+	text-align: inherit;
+}
+p-message>p {
+	margin:0.2em 0em;
+}
+p-message[align="left"]>p,
+p-message>p[align="left"]{
+	text-indent: -2em;
+}
+p-message[signal="error"], 
+p-message>p[signal="error"] {
+	color: #EF0000;
+}
+p-message[signal="warning"],
+p-message>p[signal="warning"] {
+	color: #FF7700;
+}
+p-message[signal="ok"],
+p-message>p[signal="ok"] {
+	color: #0000EF;
+}
+
+p-message[signal="ok"][onlyerrors],
+p-message[signal="ok"][onlyerrors]>p {
+	visibility: hidden;
+}
+
 
 
 /*
@@ -446,7 +470,10 @@ p-dragdrop[layout=column]>* {
 	text-align: justify;
 	justify-content: space-between;
 }
-
+[hidden] {
+	display: none;
+	visibility: hidden;
+}
 
 
 @keyframes p-shrinktransform {
