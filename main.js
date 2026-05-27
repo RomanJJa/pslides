@@ -292,7 +292,7 @@ function stringify(x) {
 	return res;
 }
 
-function displayMessage(message, node=null, signal="neutral", inConsole=true) {
+function displayMessage(message, node=null, signal="neutral", inConsole=true, escapeHTML=true) {
 	signal = ifNullStr(signal).toLowerCase();
 	var d = [], id = null, isSpecified = false;
 	if (isDOMElement(node)) id = node.id;
@@ -316,11 +316,9 @@ function displayMessage(message, node=null, signal="neutral", inConsole=true) {
 	// console.warn("id="+id+"  "+query+"\n", d)
 	let curSignal = "neutral";
 	for (var i=0; i<d.length; i++) {
-		if (signal!=="ok" || 
-		    (d[i].getAttribute("onlyerrors")===null && 
-			 ["ok","neutral"].includes(signal))) {
-			
-			
+		let isOK = ["ok","neutral"].includes(signal);
+		if (!isOK || (isOK && d[i].getAttribute("onlyerrors")===null)) {
+			if (escapeHTML===true) message = pslides.escapeHTML(message);
 			if (isSpecified) {
 				curSignal = d[i].getAttribute("signal");
 				if (!["error","warning"].includes(curSignal)) {
@@ -330,8 +328,7 @@ function displayMessage(message, node=null, signal="neutral", inConsole=true) {
 				}
 				d[i].innerHTML = message.replaceAll("\n","<br/>");
 			} else {
-				d[i].innerHTML += "<p signal=\""+signal+"\">"+
-				                  message.replaceAll("\n","<br/>")+"</p>";
+				d[i].innerHTML += "<p signal=\""+signal+"\">"+message.replaceAll("\n","<br/>")+"</p>";
 			}
 		}
 	}
@@ -449,7 +446,7 @@ function stringifyNodeTag(node) {
 	return res;
 }
 
-function escapeHTML(str) {
+pslides.escapeHTML = function(str) {
 	return str.replaceAll("<","&lt;").replaceAll(">","&gt;");
 }
 
@@ -461,13 +458,23 @@ function isDOMElement(obj) {
 
 // evaluate a string:
 function tryEval(str, at="", ifError=null) {
-	var res = null, idFrag = "";
+	if (isEmpty(str)) return null;
+	var res = null, idFrag = "", isDOM = isDOMElement(at);
 	if (typeof at === "string" && at !== "") at = document.getElementById(at);
-	if (at.id !== "") idFrag = " at "+stringifyHTMLAttribute("id", at.id);
+	isDOM = isDOMElement(at);
+	console.log("str:", str, "\nat:", at);
+	if (isDOM && at.id !== "") idFrag = " at "+stringifyHTMLAttribute("id", at.id);
 	try {
+		str = String(str);
+		str = str.trim();
+		if (str[0]=="{" && str[str.length-1]=="}") str = "("+str+")";
 		res = eval(str);
-		if (isDOMElement(at)) { // && !["P-DOWNLOAD","P-UPLOAD"].includes(at.tagName) ???
-			displayMessage("Successfully evaluated JavaScript fragment"+idFrag+".", node=at, signal="ok")
+		if (isDOM) { // && !["P-DOWNLOAD","P-UPLOAD"].includes(at.tagName) ???
+			displayMessage("Successfully evaluated JavaScript fragment"+idFrag+".",
+			               node=at, signal="ok")
+		} else if (!Empty(at)) {
+			displayMessage("Successfully evaluated JavaScript fragment: "+stringify(at)+".",
+			               node=null, signal="ok")
 		}
 		return res;
 	} catch(e) {
@@ -484,8 +491,8 @@ function tryEval(str, at="", ifError=null) {
 			ifError = stringify(ifError);
 		}
 		
-		if (isDOMElement(at)) {
-			displayMessage("Error when evaluating the element \""+stringifyNodeTag(at)+"\":\n"+ifError,
+		if (isDOM) {
+			displayMessage("Error when evaluating the element \""+at+"\":\n"+ifError,
 						   node=at, signal="error");
 		} else if (typeof at === "string" && at.trim().length > 0) {
 			at = " "+at.trim().replaceAll("\n"," ");
@@ -2261,7 +2268,8 @@ function messagingHTTPRequest(request, node=null, method="POST") {
 	console.log("mes for state "+state+": ", mes)
 	if (mes.length > 700 && signal!=="error") mes = mes.substring(0, 700)+" …";
 	//console.log("request: ",request);
-	displayMessage(message=mes, node=node, signal=signal, inConsole=(state==4));
+	displayMessage(message=mes, node=node, signal=signal,
+	               inConsole=(state==4), escapeHTML=false);
 }
 
 
@@ -2349,7 +2357,7 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 
 
 function downloadObj(node=null, x=null, filename=null) {
-	var format = "json", str = "", id = null, js = null; // create a local storage!
+	var format = "csv", str = "", id = null, js = null; // create a local storage!
 	if (isDOMElement(node)) {
 		if (![null,""].includes(node.getAttribute("format"))) {
 			format = node.getAttribute("format");
@@ -2361,7 +2369,7 @@ function downloadObj(node=null, x=null, filename=null) {
 	}
 		
 	format = format.trim().toLowerCase();
-	if ([undefined,null,""].includes(x)) x = outObj;
+	if (isEmpty(x)) x = outObj;
 	
 	if (format === "json") {
 		str = JSON.stringify(x);
@@ -2389,6 +2397,7 @@ function downloadObj(node=null, x=null, filename=null) {
 // fill attributes with JS (jsattr): insert JSON object with {"attr":value, ...}
 
 function evalJSAttr(node) {
+	if (!isDOMElement(node)) return;
 	if (node.tagName==="P-SUBJCODE") node.querySelector("span").innerHTML = extractParameter("subj").subj // 
 	var attrs  = node.getAttribute("jsattr");
 	if (attrs !== null && attrs !== "") {
@@ -2400,68 +2409,36 @@ function evalJSAttr(node) {
 			for (var key in attr) {
 				if (attr.hasOwnProperty(key)) node.setAttribute(key, stringify(attr[key]));
 			}
-			if (node.id !== "") {
-				displayMessage("\"jsattr\" successfully evaluated in id=\""+
-							   node.id+"\":", node=node)
-			}
+			displayMessage("Successfully evaluated \"jsattr\" in "+stringifyNodeTag(node)+".", 
+			               node=node, signal="ok")
 		} catch(e) {
-			displayMessage("Could not evaluate \"jsattr\" to insert "+
-			               "attributes in element with id=\""+
-						   node.id+"\":\n"+e, node=node, signal="error")
+			displayMessage("Could not evaluate \"jsattr\" to insert attributes in element with "+
+						   stringifyNodeTag(node)+":\n"+e, node=node, signal="error")
 		}
 	}
 	var jsfill = node.getAttribute("jsfill");
 	if (jsfill !== null && jsfill !== "") {
 		try {
 			node.innerHTML = stringify(eval(jsfill+";"))
-			if (node.id !== "") {
-				displayMessage("\"jsfill\" successfully evaluated at id=\""+
-							   node.id+"\":", node=node)
-			}
+			displayMessage("Successfully evaluated \"jsfill\" at "+stringifyNodeTag(node)+":",
+						   node=node, signal="ok")
 		} catch(e) {
-			displayMessage("Could not evaluate \"jsfill\":\n"+e, node=node, signal="error")
+			displayMessage("Could not evaluate \"jsfill\" at "+stringifyNodeTag(node)+":\n"+e, 
+			               node=node, signal="error")
 		}
 	}
 }
 
-pslides.download = function(node, obj=null, filename=null) {
+pslides.download = function(node=null, obj=null, filename=null) {
 	try {
 		downloadObj(node, obj, filename)
-		displayMessage(message="&#9989; <b>"+pslides.printMessage("DownloadSuccessful")+"</b>:\n"+
-			pslides.printMessage("FindDownload"), node=node, signal="neutral")
+		displayMessage("&#9989; <b>"+pslides.printMessage("DownloadSuccessful")+"</b>:\n"+
+			           pslides.printMessage("FindDownload"), node=node, signal="ok", inConsole=true, escapeHTML=false)
 	} catch(e) {
-		displayMessage(message="&#10060; "+String(e), node=node, signal="error")
+		displayMessage("&#10060; "+String(e), node=node, signal="error", inConsole=true, escapeHTML=true)
 	}
 }
 
-
-// MOVE TO MUTATION OBSERVER
-/*
-function handleOnclicks(node=document) {
-	var d = node.querySelectorAll("p-download,p-upload"), empty = true, js = null,
-		downloadSVG = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' height='2em' width='2em'>"+
-			"<g xmlns='http://www.w3.org/2000/svg' transform='matrix(-1 0 0 -1 30 32)'>"+
-			"<path data-name='Path 4' d='M28,14H23.98A1.979,1.979,0,0,0,22,15.98v.04A1.979,1.979,0,0,0,23.98,18H25a1,1,0,0,1,1,1v8a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.02A1.979,1.979,0,0,0,10,16.02v-.04A1.979,1.979,0,0,0,8.02,14H4a2,2,0,0,0-2,2V30a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V16A2,2,0,0,0,28,14Z' fill='#000000' fill-rule='evenodd' />"+
-			"<path data-name='Path 5' d='M11.413,9.387,14,6.754V23a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V7.057l.26.042L20.587,9.4a2.017,2.017,0,0,0,2.833,0,1.969,1.969,0,0,0,0-2.807L17.346.581a2.017,2.017,0,0,0-2.833,0l-5.934,6a1.97,1.97,0,0,0,0,2.806A2.016,2.016,0,0,0,11.413,9.387Z' fill='#000000' fill-rule='evenodd' />"+
-			"</g></svg>",
-		uploadSVG = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' height='2em' width='2em'>"+
-			"<path data-name='Path 4' d='M28,14H23.98A1.979,1.979,0,0,0,22,15.98v.04A1.979,1.979,0,0,0,23.98,18H25a1,1,0,0,1,1,1v8a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.02A1.979,1.979,0,0,0,10,16.02v-.04A1.979,1.979,0,0,0,8.02,14H4a2,2,0,0,0-2,2V30a2,2,0,0,0,2,2H28a2,2,0,0,0,2-2V16A2,2,0,0,0,28,14Z' fill='#000000' fill-rule='evenodd' />"+
-			"<path data-name='Path 5' d='M11.413,9.387,14,6.754V23a1,1,0,0,0,1,1h2a1,1,0,0,0,1-1V7.057l.26.042L20.587,9.4a2.017,2.017,0,0,0,2.833,0,1.969,1.969,0,0,0,0-2.807L17.346.581a2.017,2.017,0,0,0-2.833,0l-5.934,6a1.97,1.97,0,0,0,0,2.806A2.016,2.016,0,0,0,11.413,9.387Z' fill='#000000' fill-rule='evenodd' />"+
-			"</svg>";
-	for (var i=0;i<d.length;i++) {
-		empty = d[i].innerHTML.trim() === "";
-		js = d[i].getAttribute("js");
-		if (js === null || js==="") js = "outObj";
-		if (d[i].tagName==="P-DOWNLOAD") {
-			if (empty) d[i].innerHTML = downloadSVG;
-			//d[i].setAttribute("onclick", d[i].getAttribute("onclick")+";pslides.download(this,"+js+")")
-		} else if (d[i].tagName==="P-UPLOAD") {
-			if (empty) d[i].innerHTML = uploadSVG;
-			//d[i].setAttribute("onclick", d[i].getAttribute("onclick")+";sendOutData("+js+",this)")
-		}
-	}
-}
-*/
 
 pslides.commonPath = function(a, b) {
 	let i = 0, asplit = a.split("/"), bsplit = b.split("/");
@@ -3542,16 +3519,35 @@ function handlePIf(pif) {
 	return res;
 }
 
-function getDistantCousin(node) {
-	var d = node;
-	while (d.nextElementSibling === null && d.tagName !== "P-SLIDE") {
-		d = d.parentElement;
+function getNextElementSibling(el) {
+	//console.log("getNextElementSibling(el) --> el:", el)
+	if (!isDOMElement(el)) return null;
+	let sibling = el.nextSibling;
+	while (sibling) {
+		if (sibling.nodeType === Node.ELEMENT_NODE) {
+			return sibling;
+		}
+		sibling = sibling.nextSibling;
 	}
-	if (d.tagName !== "P-SLIDE" && d.nextElementSibling !== null) {
-		d = d.nextElementSibling;
+	return null;
+}
+
+
+function getDistantCousin(node) {
+	if (!isDOMElement(node)) return null;
+	var d = node;
+	//console.log("1. getDistantCousin(node) --> node:", node)
+	while (d !== null && getNextElementSibling(d) === null && d.tagName !== "P-SLIDE") {
+		d = d.parentElement;
+		//console.log("getDistantCousin(node) --> d:", d)
+	}
+	if (d === null) return null;
+	if (d.tagName !== "P-SLIDE" && getNextElementSibling(d) !== null) {
+		d = getNextElementSibling(d);
 	}
 	return d;
 }
+
 
 // DYSFUNCTIONAL FOR P-IF ?
 function renderSlide(slide) {
@@ -3587,7 +3583,9 @@ function renderSlide(slide) {
 			pslides.autoplayed.push(d);
 		}
 		
-		
+		let hasNextSibling = getNextElementSibling(d)!==null;
+		//console.log("renderSlide() --> hasNextSibling: ", hasNextSibling);
+		//console.log("renderSlide() --> current node: ", d);
 		//console.log("renderSlide is at", d)
 		if (d.tagName === "P-IF") {
 			//console.log("STARTIG P-IF:", d);
@@ -3595,29 +3593,29 @@ function renderSlide(slide) {
 			d = handlePIf(d);
 			if (d === null) { // if non of the p-if elements are true
 				d = d_prev;
-				if (d.nextElementSibling===null) {
+				if (!hasNextSibling) {
 					d = getDistantCousin(d);
 				} else {
-					d = d.nextElementSibling;
+					d = getNextElementSibling(d);
 				} 
 			} else if (d !== null && d.tagName === "P-IF" && d.firstElementChild !== null) {
 				d = d.firstElementChild;
-			} else if (d !== null && d.tagName === "P-IF" && d.nextElementSibling !== null) {
-				d = d.nextElementSibling;
+			} else if (d !== null && d.tagName === "P-IF" && hasNextSibling) {
+				d = getNextElementSibling(d);
 			} else if (d !== null && d.tagName === "P-IF") {
 				d = getDistantCousin(d);
 			}
 			//console.log("current d: ", d)
 		} else if (["P-ELIF","P-ELSE"].includes(d.tagName)) {
-			if (d.nextElementSibling !== null) {
-				d = d.nextElementSibling
+			if (hasNextSibling) {
+				d = getNextElementSibling(d)
 			} else {
 				d = getDistantCousin(d)
 			}
 		} else if (d.firstElementChild !== null) {
 			d = d.firstElementChild;
-		} else if (d.nextElementSibling !== null) {
-			d = d.nextElementSibling;
+		} else if (hasNextSibling) {
+			d = getNextElementSibling(d);
 		} else {
 			// d = d.parentElement;
 			d = getDistantCousin(d)
@@ -3640,7 +3638,7 @@ function prepareSlide(slide) {
 	evalJSAttr(slide)
 	
 	// evaluate JS attributes:
-	let js = slide.querySelectorAll("p-subjcode,[jsattr],[jsfill]");
+	//let js = slide.querySelectorAll("p-subjcode,[jsattr],[jsfill]");
 	//for (var i=0;i<js.length;i++) evalJSAttr(js[i]);
 
 	renderSlide(slide);
@@ -3728,9 +3726,10 @@ function createRecord(node=pslides.currentSlide, name=null, value) {
 	var el = document.createElement("p-response");
 	if (name !== null) el.setAttribute("name", name);
 	if (Array.isArray(value)) value = stringifyArray(value);
-	el.innerHTML = escapeHTML(stringify(value))
+	el.innerHTML = pslides.escapeHTML(stringify(value));
 	record.appendChild(el);
 }
+
 
 function browseSlides(slide, next=0) {
 	if (next===0) {
