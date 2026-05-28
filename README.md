@@ -1,6 +1,11 @@
 # PSlides: A flexible HTML framwork for online experiments and surveys
 A JavaScript library for programming powerful psychological experiments and surveys. PSlides makes it easy to integrate anything that HTML and vanilla JS have to offer.
 
+## Important news:
+**2026-05-28**: At the moment, the Brave browser does not reliably insert text or HTML (for instance with the `jsfill` attribute.
+This might be due to its ad-blocking features. We are definitely not presenting ads, but I am working on a way to make it work.
+I would not advise participants to use this browser for experiments.
+
 ## Include:
 In order to use this library, clone the project, move the files into your preferred directory on the server, and include the following two elements in your document head:
 ```html

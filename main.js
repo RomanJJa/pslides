@@ -571,7 +571,8 @@ function unpackPInput(node) {
 		arr = node.querySelectorAll("label");
 		for (var i=0;i<arr.length;i++) {
 			pid  = arr[i].getAttribute("for");
-			if ([undefined,null,""].includes(pid)) pid = name+":"+i;
+			if (arr[i].querySelector("input[id=\""+pid+"\"]")!==null) continue;
+			if (isEmpty(pid)) pid = name+":"+i;
 			arr[i].innerHTML = "<input type='checkbox'"+nameStr+stringifyHTMLAttribute("id", pid)+req+"/>"+
 							   "<span>"+arr[i].innerHTML+"</span>"
 		}
@@ -580,11 +581,12 @@ function unpackPInput(node) {
 		for (var i=0;i<arr.length;i++) {
 			arr[i].setAttribute("name", name);
 			pid = arr[i].getAttribute("for")
-			if ([undefined,null,""].includes(pid)) {
+			if (isEmpty(pid)) {
 				pid = name+":"+arr[i].innerText
 					  .replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
 					  .trim().replaceAll(/[\s\n\r\t]+/g, "_");
 			}
+			if (arr[i].querySelector("input[id=\""+pid+"\"]")!==null) continue;
 			arr[i].innerHTML = "<input type='radio'"+nameStr+stringifyHTMLAttribute("id", pid)+req+"/>"+
 							   "<span>"+arr[i].innerHTML+"</span>"
 		}
