@@ -308,7 +308,7 @@ function displayMessage(message, node=null, signal="neutral", inConsole=true, es
 		} else if (signal==="warning") {
 			console.warn(message);
 		} else {
-			console.log(message);
+			//console.log(message);
 		}
 	}
 	
@@ -451,6 +451,7 @@ pslides.escapeHTML = function(str) {
 }
 
 function isDOMElement(obj) {
+	if (isEmpty(obj) || typeof obj !== "object") return false;
 	return (typeof HTMLElement === "object" ? obj instanceof HTMLElement : //DOM2
 		obj && typeof obj === "object" && obj !== null && obj.nodeType === 1 && typeof obj.nodeName==="string"
 	);
@@ -458,11 +459,12 @@ function isDOMElement(obj) {
 
 // evaluate a string:
 function tryEval(str, at="", ifError=null) {
+	// str="5"; at=""; ifError=null
 	if (isEmpty(str)) return null;
 	var res = null, idFrag = "", isDOM = isDOMElement(at);
-	if (typeof at === "string" && at !== "") at = document.getElementById(at);
+	if (!isEmpty(at) && typeof at === "string") at = document.getElementById(at);
 	isDOM = isDOMElement(at);
-	console.log("str:", str, "\nat:", at);
+	//console.log("str:", str, "\nat:", at);
 	if (isDOM && at.id !== "") idFrag = " at "+stringifyHTMLAttribute("id", at.id);
 	try {
 		str = String(str);
@@ -472,8 +474,8 @@ function tryEval(str, at="", ifError=null) {
 		if (isDOM) { // && !["P-DOWNLOAD","P-UPLOAD"].includes(at.tagName) ???
 			displayMessage("Successfully evaluated JavaScript fragment"+idFrag+".",
 			               node=at, signal="ok")
-		} else if (!Empty(at)) {
-			displayMessage("Successfully evaluated JavaScript fragment: "+stringify(at)+".",
+		} else if (!isEmpty(at)) {
+			displayMessage("Successfully evaluated JavaScript fragment at "+stringify(at)+".",
 			               node=null, signal="ok")
 		}
 		return res;
@@ -577,7 +579,18 @@ function unpackPInput(node) {
 							   "<span>"+arr[i].innerHTML+"</span>"
 		}
 	} else if (type==="radio") {
-		arr = node.querySelectorAll("label"); //////////////////////////// What if someone forgot to set an ID?
+		
+		// First, check double names:
+		let query = "p-input[type=\"radio\"][name=\""+name+"\"]";
+		if (isEmpty(document.querySelector(query))) {
+			displayMessage("The name attribute is missing for a <p-input> of type \"radio\":\n"+stringifyNodeTag(node),
+			               node=node, signal="error", inConsole=true, escapeHTML=true)
+		} else if (document.querySelectorAll(query).length > 1) {
+			displayMessage("The name attribute ("+name+") for the <p-input> of type \"radio\" occurs more than once:\n"+stringifyNodeTag(node),
+			               node=node, signal="error", inConsole=true, escapeHTML=true)
+		}
+		
+		arr = node.querySelectorAll("label");
 		for (var i=0;i<arr.length;i++) {
 			arr[i].setAttribute("name", name);
 			pid = arr[i].getAttribute("for")
@@ -585,6 +598,8 @@ function unpackPInput(node) {
 				pid = name+":"+arr[i].innerText
 					  .replaceAll(/[\/\\\$\%\}\{\#\+\~\*\§\<\&\)\(\=\>\|\"\!\^\°\?\`\_\-\.\:\;\']/g," ")
 					  .trim().replaceAll(/[\s\n\r\t]+/g, "_");
+				displayMessage("Label inside\n"+stringifyNodeTag(node)+"\ndid not have a \"for\" attribute so that an ID was generated:\n\""+pid+"\"",
+							   node=node, signal="warning", inConsole=true, escapeHTML=true)
 			}
 			if (arr[i].querySelector("input[id=\""+pid+"\"]")!==null) continue;
 			arr[i].innerHTML = "<input type='radio'"+nameStr+stringifyHTMLAttribute("id", pid)+req+"/>"+
@@ -720,7 +735,7 @@ async function unpackPData(node) {
 		if (order.indexOf("pseudoshuffle")>-1) {
 			var tol = 2;
 			if (order.lastIndexOf(")") > -1) {
-				tol = tryEval(order.substring(order.indexOf("(")+1,order.lastIndexOf(")")));
+				tol = tryEval(order.substring(order.indexOf("(")+1,order.lastIndexOf(")")), at=node);
 				//console.error("tol: ", tol);
 			}
 			garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
@@ -1114,13 +1129,55 @@ function handleDrop(e) {
 
 
 /////////////////////////////////////////////////////////////////
-//                Node listeners
+//                        Node listeners                       //
 /////////////////////////////////////////////////////////////////
 	
 	// CSS match: function(node)
 	pslides.nodeListeners = {
 		"p-input": unpackPInput,
-		"p-upload,p-download": function (node) {
+		"input[type=\"radio\"]": function(node) {
+			let name = node.getAttribute("name");
+			if (isEmpty(name)) {
+				displayMessage("No name tag defined in a radio button:\n"+stringifyNodeTag(node),
+				               node=node, signal="warning", inConsole=true, escapeHTML=true)
+				return;
+			}
+		},
+		/*"input[type='number']": function(node) {
+			node.addEventListener("input", function() {
+				
+				
+				let caretPosition = this.selectionStart,
+					typedIndex = caretPosition-1,
+					typedCharacter = this.value.substr(typedIndex, 1),
+					existsDec = this.value.indexOf(".") > -1,
+					existsComma = this.value.indexOf(",") > -1;
+				if (/[^0-9-\.]/.test(typedCharacter) ||
+				    (existsDec && this.value.indexOf(".") != this.value.lastIndexOf(".")) ||
+					["e","E","+","4"].includes(typedCharacter) ||
+					(typedIndex>0 && typedCharacter=="-") ||
+					(typedIndex==0 && typedCharacter==".")) {
+					this.value = this.value.substr(0, typedIndex) +
+					             this.value.substr(caretPosition, this.value.length)
+					this.setSelectionRange(typedIndex, typedIndex);
+				}
+				//this.value = this.value.replaceAll(/[^0-9.-]/g, "")
+				//this.value = this.value.replace(/(?!^)-/g, '').replace(/(\..*)\./g, '$1');
+				//this.focus();
+				
+			})
+			
+			node.addEventListener("blur", function() {
+				let dec = this.getAttribute("dec");
+				if (dec === ",") {
+					this.value = this.value.replaceAll(/[^0-9,-]/g, "");
+				} else {
+					this.value = this.value.replaceAll(/[^0-9\.-]/g, "");
+				}
+			})
+			
+		},*/
+		"p-upload,p-download": function(node) {
 			var empty = node.innerHTML.trim() === "";	
 			if (empty && node.tagName==="P-DOWNLOAD") {
 				node.innerHTML = "&nbsp;<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 29 32' height='2em' width='2em'>"+
