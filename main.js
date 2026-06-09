@@ -3657,11 +3657,11 @@ function renderSlide(slide) {
 				} else {
 					d = getNextElementSibling(d);
 				} 
-			} else if (d !== null && d.tagName === "P-IF" && d.firstElementChild !== null) {
+			} else if (d.firstElementChild !== null) {
 				d = d.firstElementChild;
-			} else if (d !== null && d.tagName === "P-IF" && hasNextSibling) {
+			} else if (getNextElementSibling(d) !== null) {
 				d = getNextElementSibling(d);
-			} else if (d !== null && d.tagName === "P-IF") {
+			} else {
 				d = getDistantCousin(d);
 			}
 			//console.log("current d: ", d)
