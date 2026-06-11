@@ -524,7 +524,7 @@ function stringToArray(value) {
 	} else if (n!==null) {
 		n = Number(n.join(""))
 		if (!isNaN(Number(n)) && n > 0) {
-			res = rangeIndex(1, n);
+			res = pslides.rangeIndex(1, n);
 		}
 	}
 	//console.log("value: ", value)
@@ -731,7 +731,8 @@ async function unpackPData(node) {
 	if (order !== null && order.indexOf("shuffle")>-1 && Array.isArray(pslides.data[key])) {
 		var garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
 		//console.log("garr:\n",garr);
-		pslides.data[key] = shuffleArray(pslides.data[key], garr)
+		//pslides.data[key] = shuffleArray(pslides.data[key], garr)
+		pslides.data[key] = pslides.shuffle(pslides.data[key], garr)
 		if (order.indexOf("pseudoshuffle")>-1) {
 			var tol = 2;
 			if (order.lastIndexOf(")") > -1) {
@@ -739,7 +740,9 @@ async function unpackPData(node) {
 				//console.error("tol: ", tol);
 			}
 			garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
-			pslides.data[key] = pseudoOrderArray(array=pslides.data[key], group=garr, tolerance=tol)
+			pslides.data[key] = pslides.pseudoShuffle(x=pslides.data[key], tolerance=tol, group=groups)
+			console.log("randomization for\""+key+"\" (tol=\""+tol+"\"):", pslides.filterForKey(pslides.data[key], groups));
+			// pslides.data[key] = pseudoOrderArray(array=pslides.data[key], group=garr, tolerance=tol)
 		}
 	}
 	
@@ -777,7 +780,7 @@ async function unpackPData(node) {
 						 "because an element of id=\""+id+"\" does not exist.");
 			return;
 		}
-		console.log("called unpackIdFill().")
+		//console.log("called unpackIdFill().")
 		const clone = idnode.cloneNode(true);
 		// console.log("idToIdFill", clone.innerHTML)
 		clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
@@ -1210,7 +1213,7 @@ function handleDrop(e) {
 			for (idfill of idfills) unpackIdFill(idfill); // idfill.innerHTML = clone.innerHTML;
 		},
 		"[idfill]": unpackIdFill,
-		"[order=shuffle]": handleOrder,
+		"[order]": handleOrder,
 		"[src]:not(p-data,audio,embed,iframe,img,input[type=image],script,source,track,video)": function(node) {
 			// if file:// protocol, introduce an iframe,
 			
@@ -1369,11 +1372,21 @@ function swapNodes(node1, node2) {
 	node2.replaceWith(clonedNode1);    
 }
 
-function rangeIndex(start=0, end) {
+/*function rangeIndex(start=0, end) {
 	if (start > end) {var end2 = end; end = start; start = end2}
 	if (start < 0) start = 0; if (end < 0) end = 0;
 	var res = [];
     for (var i=start;i<=end;i++) {res.push(i)}
+	return(res)
+}*/
+
+pslides.rangeIndex = function(start=0, end=0) {
+	let res = Array(Math.abs(start-end)+1);
+	if (start > (end)) {
+		for (var i=0;i<res.length; i++) res[i] = start-i;
+	} else {
+		for (var i=0;i<res.length; i++) res[i] = start+i;
+	}
 	return(res)
 }
 
@@ -1382,20 +1395,10 @@ function rangeIndex(start=0, end) {
 function shuffleArray(x, groups=null) {
 	// var x = [1,2,13,4,15,6,7,8], groups = ["a","a","fixed","a","fixed","a","b","b"];
 	var k = Object.keys(x);
-	
-	function allIndices(x, val) {
-		var indices = [], i = -1;
-		while ((i = x.indexOf(val, i+1)) != -1){
-			indices.push(i);
-		}
-		return indices;
-	}
-	
-	
+		
 	function copy(obj) {
 		return(JSON.parse(JSON.stringify(obj)))
 	}
-	
 	
 	// an item will be removed from an array (once)
 	function removeItemOnce(arr, value) {
@@ -1405,7 +1408,7 @@ function shuffleArray(x, groups=null) {
 	}
 	
 	if (groups!==null && groups.length===x.length) {
-		var gi = allIndices(groups, "fixed")
+		var gi = pslides.allIndices(groups, "fixed")
 		for (var i=0;i<gi.length;i++) k = removeItemOnce(k, String(gi[i]));
 	}
 	var kr = copy(k);
@@ -1419,12 +1422,13 @@ function shuffleArray(x, groups=null) {
 }
 
 
-function shuffleSeq(node) { // Fisher–Yates shuffle	
+function shuffleNodeChildren(node) { // Fisher–Yates shuffle	
 	var ch = node.querySelectorAll(":scope > :not([group='fixed'])")
-	var unfixed = rangeIndex(0, ch.length-1)
+	var unfixed = pslides.rangeIndex(0, ch.length-1)
 	
 	// Shuffle the array
-	unfixed_shuffled = shuffleArray(JSON.parse(JSON.stringify(unfixed)));
+	//unfixed_shuffled = shuffleArray(JSON.parse(JSON.stringify(unfixed)));
+	unfixed_shuffled = pslides.shuffle(JSON.parse(JSON.stringify(unfixed)));
 	
 	var past_swaps = []
 	// there should be a function to prevent [0, 1] --> [1, 0] from staying unchanged
@@ -1439,14 +1443,78 @@ function shuffleSeq(node) { // Fisher–Yates shuffle
 	}
 }
 
+
+// shuffle an array or a 
 pslides.shuffle = function(x, groups=null) {
 	if (isDOMElement(x)) {
-		shuffleSeq(x);
+		//shuffleNodeChildren(x);
+		var ch = x.querySelectorAll(":scope > :not([group='fixed'])")
+		var unfixed = pslides.rangeIndex(0, ch.length-1).filter(x => x >= 0)
+		
+		// Shuffle the array
+		//unfixed_shuffled = shuffleArray(JSON.parse(JSON.stringify(unfixed)));
+		unfixed_shuffled = pslides.shuffle(JSON.parse(JSON.stringify(unfixed)));
+		
+		var past_swaps = []
+		// there should be a function to prevent [0, 1] --> [1, 0] from staying unchanged
+		// because otherwise, e.g., an array of 2 can never get shuffled.
+		for (var i=0; i < unfixed.length; i++) {
+			if (unfixed[i] !== unfixed_shuffled[i] && 
+				!past_swaps.includes(String(unfixed_shuffled[i])+" "+String(unfixed[i])) ) {
+				swapNodes(ch[unfixed[i]], ch[unfixed_shuffled[i]]);
+				past_swaps.push(String(unfixed[i])+" "+String(unfixed_shuffled[i]));
+			}
+			ch = x.querySelectorAll(":scope > :not([group='fixed'])");
+		}
 		return x.children;
+		
 	} else if (Array.isArray(x)) {
-		return shuffleArray(x, groups=groups)
+		//return shuffleArray(x, groups=groups)
+		// var x = [1,2,13,4,15,6,7,8], groups = ["a","a","fixed","a","fixed","a","b","b"];
+		var k = Object.keys(x);
+			
+		function copy(obj) {
+			return(JSON.parse(JSON.stringify(obj)))
+		}
+		
+		// an item will be removed from an array (once)
+		function removeItemOnce(arr, value) {
+			var index = arr.indexOf(value);
+			if (index > -1) arr.splice(index, 1);
+			return arr;
+		}
+		
+		if (groups!==null && groups.length===x.length) {
+			var gi = pslides.allIndices(groups, "fixed")
+			for (var i=0;i<gi.length;i++) k = removeItemOnce(k, String(gi[i]));
+		}
+		var kr = copy(k);
+		for (var i=kr.length-1;i>0;i--) {
+			var j = Math.floor(Math.random() * (i + 1));
+			var temp = kr[i]; kr[i] = kr[j]; kr[j] = temp;
+		}
+		var res = copy(x);
+		for (var i=0;i<k.length;i++) res[k[i]] = x[kr[i]];
+		return res;
 	}
 }
+
+pslides.filterForKey = function(x, key) {
+	let res = [];
+	for (var i=0; i<x.length; i++) {
+		res[i] = x[i][key];
+	}
+	return res;
+}
+
+pslides.allIndices = function(x, val) {
+	var indices = [], i = -1;
+	while ((i = x.indexOf(val, i+1)) != -1){
+		indices.push(i);
+	}
+	return indices;
+}
+
 
 // get unique values
 function unique(x) {
@@ -1454,16 +1522,182 @@ function unique(x) {
 	return x.filter(onlyUnique);
 }
 
-// returns the group of the previous 
-function previousGroups(nodeList, index, tol=1) {
-	var res = [], indices = rangeIndex(index - tol, index);
-	for (let i of indices) {res.push(nodeList[i].getAttribute("group"))}
-	return(res)
+//pseudoOrderArray(array, group, tolerance=1)
+pslides.pseudoShuffle = function(x, tolerance=1, groups=null, preshuffle=true) {
+	
+	if (isDOMElement(x)) {
+		
+		// function to return the group of the previous groups:
+		function previousGroups(nodeList, index, tol=1) {
+			var res = [], indices = pslides.rangeIndex(index - tol, index);
+			for (let i of indices) {res.push(nodeList[i].getAttribute("group"))}
+			return(res)
+		}
+		
+		// First, shuffle the child elements:
+		if (preshuffle) pslides.shuffle(x, groups=null);
+				
+		var ch = x.querySelectorAll(":scope > :not([group='fixed'])")
+		
+		// Rearrange items to avoid same group neighbors:
+		for (rep=0; rep<2; rep++) {
+			for (var i=1;i<ch.length;i++) {
+				if (unique(previousGroups(ch,i,tolerance)).length === 1) {
+					// Find a different group item to swap
+					for (var j=i+1; j < 2*ch.length-2; j++) {
+						var jmod = j % ch.length;
+						if (ch[jmod].getAttribute("group") !== ch[i].getAttribute("group")) {
+							swapNodes(ch[i], ch[jmod]);
+							//console.log(previousGroups(ch, i, tolerance));
+							break; // Swap the elements
+						}
+					}
+				}
+				if (unique(previousGroups(ch,i,tolerance)).length === 1) {
+					console.error("Permutation Failed");
+				} else {
+					console.error("Permutation Failed");
+				}
+				
+				ch = x.querySelectorAll(":scope > :not([group='fixed'])");
+			}
+		}
+		return ch;
+			
+	} else if (Array.isArray(x)) {
+		
+		/*
+		 y = [{group:"a",ind:1},{group:"a",ind:2},{group:"a",ind:3},{group:"a",ind:4},{group:"a",ind:5},
+		      {group:"b",ind:6},{group:"b",ind:7},{group:"b",ind:8},{group:"b",ind:9},{group:"b",ind:0}]
+		 y = pslides.pseudoShuffle(y, tolerance=2, pslides.filterForKey(y, "group"))
+		 pslides.filterForKey(y, "group")
+		*/
+		//if (preshuffle) x = shuffleArray(x, groups=pslides.filterForKey(x, "group"));
+		// pslides.filterForKey(pslides.data.stimuli, "numA_is_num1")
+		
+		if (preshuffle) {
+			x = pslides.shuffle(x, groups=groups);
+			garr = pslides.filterForKey(x, groups)
+		}
+		// return pseudoOrderArray(array=x, group, tolerance=1)
+		tolerance++;
+		//console.log("Beginning, Groups: ", garr);
+		for (var rep=0; rep<3; rep++) {
+			for (var i=tolerance;i<x.length;i++) {
+				if (garr[i] !== "fixed" && unique(garr.slice(i-tolerance+1, i+1)).length < 2) {
+					// Find a different group item to swap
+					var j = i+1;
+					while ((garr[j % x.length] === "fixed" || garr[j % x.length] === garr[i]) && 
+						   j<x.length*2) j++;
+					
+					//console.log("Before:", group);
+					j = j % x.length;
+					var temp = x[i] ;  x[i] = x[j] ;  x[j] = temp;
+						temp = garr[i]; garr[i] = garr[j]; garr[j] = temp;
+					//console.log("After:", group);
+				}
+			}
+		}
+		//console.log("Finally, Groups: ", garr)
+		//console.log("Finally, x: ", x)
+		return x;
+	}
 }
 
-function pseudoShuffleSeq(node, tolerance=1, preshuffle=true) {
-	// console.log(preshuffle)
-	if (preshuffle) shuffleSeq(node);
+pslides.resort = function(x, positions=[]) {
+	
+	let isDOM = isDOMElement(x);
+	if (isDOM) x = x.children;
+	if (isEmpty(positions) || (Array.isArray(positions) && positions.length==0)) {
+		// warn?
+		return x;
+	}
+	
+	if (!x || !positions) {
+		throw new Error("Both arguments \"x\" and \"positions\" are required.");
+	}
+	const n = x.length;
+	
+	// Checking and handling if length of positions and length of x are the same:
+	if (positions.length !== n) {
+		// throw new Error("Length of \"positions\" must equal length of \"x\".");
+		let rawPositions = pslides.rangeIndex(start=0, n-1);
+		for (var i=0; i<positions.length; i++) rawPositions[i] = positions[i];
+		positions = rawPositions;
+	}
+	
+	// Validate positions for out-of-bounds safety:
+	const seen = new Array(n).fill(false);
+	for (let i = 0; i < n; i++) {
+		const p = positions[i];
+		if (typeof p !== 'number' || p < 0 || p >= n || seen[p]) {
+			throw new Error("Positions must be a valid permutation of 0 to " + (n - 1));
+		}
+		seen[p] = true;
+	}
+  
+	if (isDOM) {
+		// For DOM nodes: collect in new order and re-append to parent
+		const orderedNodes = positions.map(index => x[index]);
+		if (orderedNodes.length === 0) return x;
+		const parent = orderedNodes[0].parentNode;
+		if (!parent) throw new Error("DOM nodes must have a parent to reorder");
+		// Re-append in the new order:
+		orderedNodes.forEach(node => {parent.appendChild(node)});
+	} else {
+		// create new order and update in place
+		const ordered = positions.map(index => x[index]);
+		for (let i=0; i<n; i++) x[i] = ordered[i];
+	}
+	return x;
+}
+
+
+pslides.reverse = function(x, prob=1) {
+	// pslides.reverse(document.querySelector("ul"), prob=0.5)
+	// x = document.querySelector("ul"); prob=0.5
+	
+	let isDOM = isDOMElement(x), items = x;
+	if ((isEmpty(x) || !Array.isArray(x)) && !isDOM) {
+		throw new Error("Argument \"x\" must be an array or a DOM element.");
+	}
+	if (isDOM) items = x.children;
+	
+	if (Math.random() < prob) {
+		return pslides.resort(x, pslides.rangeIndex(items.length-1, 0));
+	} else {
+		return items;
+	}
+}
+
+pslides.latinShuffle = function(x) {
+	let isDOM = isDOMElement(x);
+	let items = x;
+	if ((isEmpty(x) || !Array.isArray(x)) && !isDOM) {
+		throw new Error("Argument \"x\" must be an array or a DOM element.");
+	}
+	if (isDOM) items = x.children;
+	
+	let rand = Math.floor(Math.random() * items.length);
+	let n = items.length;
+	let newOrder = pslides.rangeIndex(0, n-1);
+	for (var i=0; i<n; i++) {
+		newOrder[i] = (rand + newOrder[i]) % n
+	}
+	return pslides.resort(x, newOrder);
+}
+
+/*
+function pseudoShuffleNodeChildren(node, tolerance=1, preshuffle=true) {
+	
+	// returns the group of the previous 
+	function previousGroups(nodeList, index, tol=1) {
+		var res = [], indices = pslides.rangeIndex(index - tol, index);
+		for (let i of indices) {res.push(nodeList[i].getAttribute("group"))}
+		return(res)
+	}
+	
+	if (preshuffle) shuffleNodeChildren(node);
 	
 	// node = document.getElementById("pseudo")
 	var ch = node.querySelectorAll(":scope > :not([group='fixed'])") 
@@ -1493,14 +1727,14 @@ function pseudoShuffleSeq(node, tolerance=1, preshuffle=true) {
 	}
 	// previousGroups(document.querySelectorAll("p-set[name='nct_num']>p-set"),276,276)
 	return ch;
-}
+}*/
 
 // pseudo order an array: rearrange it so that the same group doesn't follow 'tolerance' times after another
 function pseudoOrderArray(array, group, tolerance=1) {
 	// Rearrange items to avoid same group neighbors:
 	//var array = [0,1,2,3,4,5,6,7,8,9], group = ["b","b","a","a","b","b","b","fixed","a","a"], tolerance = 1; pseudoOrderArray(array, group, 2)
 	tolerance++;
-	console.log("Beginning, Groups: ", group);
+	//console.log("Beginning, Groups: ", group);
 	for (var rep=0; rep<3; rep++) {
 		for (var i=tolerance;i<array.length;i++) {
 			if (group[i] !== "fixed" && unique(group.slice(i-tolerance+1, i+1)).length < 2) {
@@ -1517,7 +1751,7 @@ function pseudoOrderArray(array, group, tolerance=1) {
 			}
 		}
 	}
-	console.log("Finally, Groups: ", group)
+	//console.log("Finally, Groups: ", group)
 	return array;
 }
 
@@ -1618,32 +1852,6 @@ pslides.evalOrderRule = function(array, rules=[], iterator=0) {
 }
 
 
-// !!!!!!!!!!!!!!!!!!!!!!!! Bugs?? !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-pslides.pseudoShuffleArray = function(x, rules=[]) {
-	// x=items; rules = [new pslides.orderRule(obj={type:'A'}, within=3, atmost=1)]
-	// first shuffle.
-	x = shuffle(x);
-	
-	var i=0, i2 = 0, j = 0, tmp = null;
-	while (i!==null && i<x.length*2) {
-		i2 = pslides.evalOrderRule(x, rules, i % x.length);
-		
-		j=i2+1;
-		if (i2 !== null) {
-			 // go beyond the current index and switch items:
-			while (i2 === i && j<array.length*2) {
-				// 1. switch two items:
-				tmp = x[i2]; 
-				x[i2] = x[j % array.length]; x[j % array.length] = tmp;
-				i2 = pslides.evalOrderRule(x, rules, i % x.length);
-				j++;
-			}
-			i = i2;
-		}
-	}
-	return x;
-}
-
 /*
 items = [
     { id: 1, type: 'A' },
@@ -1666,7 +1874,7 @@ function handleOrder(node) {
 	let order = ifNullStr(node.getAttribute("order")),
 		nstr  = node.getAttribute("n"),
 		n     = Number(ifNullStr(nstr)); //, preshuffle = true;
-	
+		
 	// Handle order attribute:
 	if (isEmpty(order)) return;
 	let lower = order.toLowerCase().trim(),
@@ -1677,28 +1885,33 @@ function handleOrder(node) {
 		                stringifyNodeTag(node));
 	}
 	if (lower==="shuffle") {
-		shuffleSeq(node)
+		//shuffleNodeChildren(node)
+		pslides.shuffle(node);
 	} else if (lower==="latin") {
-		// LATIN SQUARE ORDER!
+		pslides.latinShuffle(node);
 	} else if (command==="pseudoshuffle") {
 		let tol = Number(tryEval(parenth, at=node));
 		if (parenth==="") tol = 1;
 		if (tol === 0 || isNaN(tol)) {
 			console.warn("Tolerance in order=\"pseudoshuffle\" not a valid number so just shuffling data:\n"+
 			             stringifyNodeTag(node));
-			shuffleSeq(node)
+			//shuffleNodeChildren(node);
+			pslides.shuffle(node);
 		} else {
-			pseudoShuffleSeq(node, tol)
+			//pseudoShuffleNodeChildren(node, tol);
+			pslides.pseudoShuffle(node, tolerance=tol, groups=null, preshuffle=true)
 		}
 	} else if (command==="reverse") {
-		let prob = Number(tryEval(parenth, at=node));
+		let prob = Math.abs(Number(tryEval(parenth, at=node)));
 		if (parenth==="") prob = 1;
-		if (isNaN(prob) || prob < 0) {
+		if (isNaN(prob)) {
 			console.warn("Probability in order\"reverse\" not a valid number so just shuffling data:\n"+
 			             stringifyNodeTag(node));
+			prob = 1;
 		} else if (prob > 1) {
 			prob = prob/100
 		}
+		pslides.reverse(node, prob);
 	}
 	
 	// Handle n attribute:
@@ -1884,7 +2097,8 @@ async function handlePData() {
 		if (order !== null && order.indexOf("shuffle")>-1 && Array.isArray(pslides.data[key])) {
 			var garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
 			//console.log("garr:\n",garr);
-			pslides.data[key] = shuffleArray(pslides.data[key], garr)
+			//pslides.data[key] = shuffleArray(pslides.data[key], garr)
+			pslides.data[key] = pslides.shuffle(pslides.data[key], garr)
 			if (order.indexOf("pseudoshuffle")>-1) {
 				var tol = 2;
 				if (order.lastIndexOf(")") > -1) {
@@ -1892,7 +2106,12 @@ async function handlePData() {
 					//console.error("tol: ", tol);
 				}
 				garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
-				pslides.data[key] = pseudoOrderArray(array=pslides.data[key], group=garr, tolerance=tol)
+				
+				// pseudoOrderArray(array, group, tolerance=1)
+				// pslides.pseudoShuffle(x, tolerance=1, groups=null, preshuffle=true) {
+				pslides.data[key] = pslides.pseudoShuffle(x=pslides.data[key], tolerance=tol, group=groups)
+				console.log("Randomization for \""+key+"\" (tol=\""+tol+"\"):", pslides.filterForKey(res, groups));
+				// pslides.data[key] = pseudoOrderArray(array=pslides.data[key], group=garr, tolerance=tol)
 			}
 		}
 		
